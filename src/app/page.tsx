@@ -385,12 +385,6 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                   )}
                 </div>
               )}
-              {dayLocations.length > 0 && (
-                <div className="ml-8">
-                  <div className="font-semibold text-blue-700 mb-1">Wetterübersicht:</div>
-                  <LocationsWeatherBar locations={dayLocations} />
-                </div>
-              )}
             </motion.div>
           );
         })}
