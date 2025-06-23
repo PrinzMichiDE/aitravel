@@ -220,9 +220,9 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon, destination
         </div>
       )}
       <div className="flex gap-2 mt-1 mb-1">
-        <button onClick={() => { setIsFavorite(f => !f); localStorage.setItem(`fav_${name}`, (!isFavorite).toString()); }} aria-label="Favorit" className={`p-2 rounded-full shadow ${isFavorite ? 'bg-yellow-300' : 'bg-gray-200'} hover:bg-yellow-400 transition`} title="Als Favorit speichern">★</button>
-        <button onClick={() => { navigator.clipboard.writeText(window.location.href + `#${encodeURIComponent(name)}`); }} aria-label="Teilen" className="p-2 rounded-full shadow bg-blue-200 hover:bg-blue-400 transition" title="Link teilen">🔗</button>
-        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full shadow bg-green-200 hover:bg-green-400 transition" title="Auf Karte anzeigen">🗺️</a>
+        <button onClick={() => { setIsFavorite(f => !f); if (typeof window !== 'undefined') localStorage.setItem(`fav_${name}`, (!isFavorite).toString()); }} aria-label="Favorit" className={`p-2 rounded-full shadow ${isFavorite ? 'bg-yellow-300' : 'bg-gray-200'} hover:bg-yellow-400 transition`} title="Als Favorit speichern">★</button>
+        <button onClick={() => { if (typeof window !== 'undefined' && typeof navigator !== 'undefined') navigator.clipboard.writeText(window.location.href + `#${encodeURIComponent(name)}`); }} aria-label="Teilen" className="p-2 rounded-full shadow bg-blue-200 hover:bg-blue-400 transition" title="Link teilen">🔗</button>
+        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full shadow bg-green-200 hover:bg-green-400 transition" title="Auf Karte anzeigen">��️</a>
       </div>
       <span className="font-bold text-base text-blue-900 text-center mb-1">{name}</span>
       {wiki.description && <span className="text-xs text-blue-700 mb-1 text-center">{wiki.description}</span>}

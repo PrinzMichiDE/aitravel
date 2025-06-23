@@ -1,12 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import ReactMarkdown from 'react-markdown';
 import LocationInfo from './components/LocationInfo';
 import { motion, AnimatePresence } from 'framer-motion';
 import React from 'react';
-import MapDisplay from './components/MapDisplay';
 import { FaMapMarkerAlt, FaUtensils, FaCalendarAlt } from 'react-icons/fa';
+
+// Dynamischer Import für MapDisplay (vermeidet SSR-Probleme mit Leaflet)
+const MapDisplay = dynamic(() => import('./components/MapDisplay'), { 
+  ssr: false,
+  loading: () => <div style={{height: '100%', width: '100%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px'}}><p>Karte wird geladen...</p></div>
+});
 
 // Typdefinition für einen Ort
 export interface Location {
