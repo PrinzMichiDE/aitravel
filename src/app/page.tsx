@@ -440,13 +440,17 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                 <div className="w-full md:w-1/2 flex flex-col gap-4">
                   <div>
                     <span className="font-semibold text-blue-700 flex items-center gap-2"><FaCalendarAlt color="red" /> Events</span>
-                    {events.length === 0 ? <div className="text-gray-400 text-sm">Keine Events gefunden.</div> : events.map(ev => (
-                      <div key={ev.id} className="flex items-center gap-2 mt-2">
-                        <FaCalendarAlt color="red" />
-                        <a href={ev.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline font-semibold">{ev.name}</a>
-                        <span className="text-xs text-gray-500">{ev.start && new Date(ev.start).toLocaleString('de-DE')}</span>
-                      </div>
-                    ))}
+                    {events.length === 0 ? (
+                      <div className="text-gray-400 text-sm">Keine Events gefunden.</div>
+                    ) : (
+                      events.map(ev => (
+                        <div key={ev.id} className="flex items-center gap-2 mt-2">
+                          <FaCalendarAlt color="red" />
+                          <a href={ev.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline font-semibold">{ev.name}</a>
+                          <span className="text-xs text-gray-500">{ev.start && new Date(ev.start).toLocaleString('de-DE')}</span>
+                        </div>
+                      ))
+                    )}
                   </div>
                   <div>
                     <span className="font-semibold text-green-700 flex items-center gap-2"><FaUtensils color="green" /> Restaurants</span>
