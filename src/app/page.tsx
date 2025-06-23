@@ -494,7 +494,7 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                     <div className="flex flex-col items-center gap-2">
                       <div className="min-w-[220px] max-w-xs w-full bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col gap-2 shadow-sm">
                         <span className="font-semibold text-gray-800 mb-1 truncate text-lg">{dayLocations[0].name}</span>
-                        <LocationInfo name={dayLocations[0].name} lat={dayLocations[0].lat} lon={dayLocations[0].lon} destination={plan.destination || 'Berlin'} />
+                        <LocationInfo name={dayLocations[0].name} lat={dayLocations[0].lat} lon={dayLocations[0].lon} destination={planWithDestination.destination} eventDate={dayDate} />
                       </div>
                       <div className="text-gray-400 text-sm mt-2">Für diesen Tag ist nur ein Highlight geplant.</div>
                     </div>
@@ -503,7 +503,7 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                       {dayLocations.map((loc, lidx) => (
                         <div key={lidx} className="min-w-[260px] max-w-xs flex-shrink-0 bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition-shadow duration-200">
                           <span className="font-semibold text-gray-800 mb-1 truncate text-lg">{loc.name}</span>
-                          <LocationInfo name={loc.name} lat={loc.lat} lon={loc.lon} destination={plan.destination || 'Berlin'} />
+                          <LocationInfo name={loc.name} lat={loc.lat} lon={loc.lon} destination={planWithDestination.destination} eventDate={dayDate} />
                         </div>
                       ))}
                     </div>

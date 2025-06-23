@@ -5,6 +5,7 @@ interface LocationInfoProps {
   lat: number;
   lon: number;
   destination: string;
+  eventDate?: string; // optionales Tagesdatum (ISO, z.B. '2025-07-01')
 }
 
 interface WikiData {
@@ -70,7 +71,7 @@ const EventBox: React.FC<{ event: any }> = ({ event }) => (
   </div>
 );
 
-const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon, destination }) => {
+const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon, destination, eventDate }) => {
   const [wiki, setWiki] = useState<WikiData | 'notfound'>('notfound');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +146,15 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon, destination
 
   // Kombiniere alle Bilder (nur eine galleryImages-Variable!)
   const galleryImages: string[] = [...getImagesFromWiki(wiki), ...extraImages, ...unsplashImages, ...pixabayImages];
+
+  // Events nach Tagesdatum filtern, falls eventDate gesetzt ist
+  const filteredEvents = eventDate
+    ? events.filter(ev => {
+        if (!ev.start) return false;
+        const eventDay = new Date(ev.start).toISOString().slice(0, 10);
+        return eventDay === eventDate;
+      })
+    : events;
 
   if (loading) return (
     <div className="flex items-center gap-2 text-gray-400 text-sm animate-pulse min-h-[120px]">
@@ -229,10 +239,10 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon, destination
         )}
       </div>
       {/* Events */}
-      {events.length > 0 && (
+      {filteredEvents.length > 0 && (
         <div className="w-full mt-4">
           <div className="font-semibold text-blue-700 mb-2">Events & Veranstaltungen:</div>
-          {events.map(ev => <EventBox key={ev.id} event={ev} />)}
+          {filteredEvents.map(ev => <EventBox key={ev.id} event={ev} />)}
         </div>
       )}
     </div>
