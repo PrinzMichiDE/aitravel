@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import ReactMarkdown from 'react-markdown';
 
 // Typdefinition für einen Ort
 export interface Location {
@@ -185,9 +186,35 @@ const SavedPlan: React.FC = () => {
     <div className="mt-8 bg-white p-8 rounded-lg shadow-md">
       <h3 className="text-2xl font-bold text-gray-800 mb-4">Dein gespeicherter Reiseplan</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <pre className="whitespace-pre-wrap font-sans text-gray-700 bg-gray-50 p-4 rounded-lg overflow-x-auto h-[600px]">
-          {savedPlan.planText}
-        </pre>
+        <div className="h-[600px] overflow-y-auto">
+          <div className="prose prose-blue max-w-none">
+            <ReactMarkdown>{savedPlan.planText}</ReactMarkdown>
+          </div>
+          <div className="mt-6">
+            <h4 className="text-lg font-semibold mb-2">Orte & Links</h4>
+            {savedPlan.locations.map((loc, idx) => (
+              <div key={idx} className="mb-2 flex flex-col md:flex-row md:items-center md:gap-2">
+                <span className="font-medium">{loc.name}</span>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lon}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline ml-2"
+                >
+                  Google Maps
+                </a>
+                <a
+                  href={`https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(loc.name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-600 underline ml-2"
+                >
+                  Wikipedia
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
         <div className="h-[600px]">
           <MapDisplay locations={savedPlan.locations} />
         </div>
