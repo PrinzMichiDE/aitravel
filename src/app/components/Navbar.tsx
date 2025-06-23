@@ -21,20 +21,20 @@ export default function Navbar() {
                 <span className="mr-4 text-gray-700 font-semibold">
                   {user.name || user.email}
                 </span>
-                <a
+                <Link
                   href="/api/auth/logout"
                   className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
                 >
                   Abmelden
-                </a>
+                </Link>
               </>
             ) : (
-              <a
+              <Link
                 href="/api/auth/login"
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
               >
                 Anmelden
-              </a>
+              </Link>
             )}
           </div>
         </div>

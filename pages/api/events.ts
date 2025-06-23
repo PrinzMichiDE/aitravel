@@ -13,8 +13,29 @@ type Event = {
   venue?: string;
 };
 
+// Parameter-Typ für Event-Abfragen
+type EventParams = {
+  q: string;
+  origin?: string;
+  radius?: string;
+  start?: string;
+  end?: string;
+};
+
+// Eventbrite Event-Typ
+type EventbriteEvent = {
+  id: string;
+  name: { text: string };
+  url: string;
+  start: { local: string };
+  end: { local: string };
+  logo?: { url: string };
+  description?: { text: string };
+  venue?: { name: string };
+};
+
 // Eventbrite Provider
-async function fetchEventbriteEvents(params: any): Promise<Event[]> {
+async function fetchEventbriteEvents(params: EventParams): Promise<Event[]> {
   const token = process.env.EVENTBRITE_TOKEN;
   if (!token) return [];
   const { q, origin, radius, start, end } = params;
@@ -26,7 +47,7 @@ async function fetchEventbriteEvents(params: any): Promise<Event[]> {
   const response = await fetch(url);
   if (!response.ok) return [];
   const data = await response.json();
-  return (data.events || []).map((ev: any) => ({
+  return (data.events || []).map((ev: EventbriteEvent) => ({
     id: 'eb-' + ev.id,
     provider: 'eventbrite',
     name: ev.name?.text,
@@ -49,8 +70,21 @@ async function geocodeAddress(address: string): Promise<{ lat: number, lon: numb
   return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
 }
 
+// Meetup Event-Typ
+type MeetupEvent = {
+  id: string;
+  name: string;
+  link: string;
+  local_date: string;
+  local_time: string;
+  featured_photo?: { photo_link: string };
+  description: string;
+  venue?: { name: string };
+  group?: { name: string };
+};
+
 // Meetup Provider
-async function fetchMeetupEvents(params: any): Promise<Event[]> {
+async function fetchMeetupEvents(params: EventParams): Promise<Event[]> {
   const apiKey = process.env.MEETUP_API_KEY;
   if (!apiKey) return [];
   const { q, origin, radius, start, end } = params;
@@ -65,7 +99,7 @@ async function fetchMeetupEvents(params: any): Promise<Event[]> {
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
-  return (data.events || []).map((ev: any) => ({
+  return (data.events || []).map((ev: MeetupEvent) => ({
     id: 'mu-' + ev.id,
     provider: 'meetup',
     name: ev.name,
@@ -78,8 +112,20 @@ async function fetchMeetupEvents(params: any): Promise<Event[]> {
   }));
 }
 
+// Ticketmaster Event-Typ
+type TicketmasterEvent = {
+  id: string;
+  name: string;
+  url: string;
+  dates?: { start?: { dateTime: string } };
+  images?: Array<{ url: string }>;
+  info?: string;
+  description?: string;
+  _embedded?: { venues?: Array<{ name: string }> };
+};
+
 // Ticketmaster Provider
-async function fetchTicketmasterEvents(params: any): Promise<Event[]> {
+async function fetchTicketmasterEvents(params: EventParams): Promise<Event[]> {
   const apiKey = process.env.TICKETMASTER_API_KEY;
   if (!apiKey) return [];
   const { q, origin, radius, start, end } = params;
@@ -96,7 +142,7 @@ async function fetchTicketmasterEvents(params: any): Promise<Event[]> {
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
-  const events = (data._embedded?.events || []).map((ev: any) => ({
+  const events = (data._embedded?.events || []).map((ev: TicketmasterEvent) => ({
     id: 'tm-' + ev.id,
     provider: 'ticketmaster',
     name: ev.name,
@@ -111,16 +157,16 @@ async function fetchTicketmasterEvents(params: any): Promise<Event[]> {
 }
 
 // Eventim Provider (Scraping, Platzhalter)
-async function fetchEventimEvents(params: any): Promise<Event[]> {
+async function fetchEventimEvents(): Promise<Event[]> {
   // TODO: Scraping-Implementierung (Cheerio/Puppeteer)
   return [];
 }
 
-const PROVIDERS: Record<string, (params: any) => Promise<Event[]>> = {
+const PROVIDERS: Record<string, (params: EventParams) => Promise<Event[]>> = {
   eventbrite: fetchEventbriteEvents,
   meetup: fetchMeetupEvents,
   ticketmaster: fetchTicketmasterEvents,
-  eventim: fetchEventimEvents,
+  eventim: () => fetchEventimEvents(),
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -141,7 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Alle Provider parallel abfragen
     const results = await Promise.all(
-      selectedProviders.map(p => PROVIDERS[p]({ q, start, end, origin, radius }))
+      selectedProviders.map(p => PROVIDERS[p]({ q: String(q), start: start ? String(start) : undefined, end: end ? String(end) : undefined, origin: origin ? String(origin) : undefined, radius: radius ? String(radius) : undefined }))
     );
     // Ergebnisse zusammenführen
     const events = results.flat();

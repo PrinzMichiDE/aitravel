@@ -1,5 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+type UnsplashImage = {
+  urls?: { regular: string };
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
   const { q } = query;
@@ -17,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(response.status).json({ error: 'Fehler beim Abrufen der Unsplash-Bilder.' });
     }
     const data = await response.json();
-    const images = data.results.map((img: any) => img.urls?.regular).filter(Boolean);
+    const images = data.results.map((img: UnsplashImage) => img.urls?.regular).filter(Boolean);
     res.status(200).json({ images });
   } catch (error) {
     console.error(error);

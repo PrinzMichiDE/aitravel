@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
     return res.status(500).json({ error: 'Wetterdaten konnten nicht geladen werden.' });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Interner Serverfehler.' });
   }
 } 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import ReactMarkdown from 'react-markdown';
 import LocationInfo from './components/LocationInfo';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,23 +24,27 @@ interface TravelPlan {
   destination?: string;
 }
 
-const MapDisplayComponent = dynamic(() => import('./components/MapDisplay'), { 
-  ssr: false,
-  loading: () => <div style={{height: '400px', width: '100%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center'}}><p>Karte wird geladen...</p></div>
-});
+// Definiere spezifische Typen
+type WeatherData = {
+  weather?: Array<{ icon?: string }>;
+  main?: { temp?: number };
+};
 
-const NotLoggedIn = () => (
-  <div className="w-full max-w-4xl bg-white p-8 rounded-lg shadow-md text-center">
-    <h2 className="text-2xl font-bold mb-4 text-gray-800">Willkommen beim Intelligenten Reiseführer!</h2>
-    <p className="text-gray-600 mb-6">Bitte melden Sie sich an, um Ihren persönlichen Reiseplan zu erstellen.</p>
-    <a
-      href="/api/auth/login"
-      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-    >
-      Anmelden
-    </a>
-  </div>
-);
+type EventData = {
+  name?: string;
+  start?: string;
+  venue?: string;
+  description?: string;
+  venue_lat?: number;
+  venue_lon?: number;
+};
+
+type MapMarker = {
+  name: string;
+  lat: number;
+  lon: number;
+  type: 'poi' | 'event' | 'restaurant';
+};
 
 const TravelPlanner = () => {
   const [destination, setDestination] = useState('');
@@ -55,14 +58,12 @@ const TravelPlanner = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<TravelPlan | null>(null);
-  const [isPlanSaved, setIsPlanSaved] = useState(true);
 
   const handleGenerateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setPlan(null);
-    setIsPlanSaved(false);
 
     // Dauer berechnen
     let duration = 1;
@@ -88,26 +89,8 @@ const TravelPlanner = () => {
       }
 
       setPlan(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSavePlan = async () => {
-    if (!plan) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await fetch('/api/plan/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(plan),
-      });
-      setIsPlanSaved(true);
-    } catch (err) {
-      setError('Fehler beim Speichern des Plans.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Ein unbekannter Fehler ist aufgetreten.');
     } finally {
       setLoading(false);
     }
@@ -191,8 +174,8 @@ const SavedPlan: React.FC = () => {
         }
         const data = await res.json();
         setSavedPlan(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Kein gespeicherter Plan gefunden oder nicht eingeloggt.');
       } finally {
         setLoading(false);
       }
@@ -246,7 +229,7 @@ function googleMapsRouteLink(locations: Location[]): string | null {
 
 // Hilfskomponente: Wetter für einen Tag (lat, lon, date)
 const DayWeather: React.FC<{ lat: number; lon: number; date: string }> = ({ lat, lon, date }) => {
-  const [weather, setWeather] = React.useState<any>(null);
+  const [weather, setWeather] = React.useState<WeatherData | null>(null);
   const [loading, setLoading] = React.useState(true);
   React.useEffect(() => {
     let cancelled = false;
@@ -274,59 +257,7 @@ const DayWeather: React.FC<{ lat: number; lon: number; date: string }> = ({ lat,
       {weather.weather?.[0]?.icon && (
         <img src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}.png`} alt="Wetter" className="w-8 h-8 mb-1" />
       )}
-      <span className="text-xs font-semibold text-blue-700">{Math.round(weather.main.temp)}°C</span>
-    </div>
-  );
-};
-
-// Komponente: Kompakte Wetterübersicht für mehrere Locations
-const LocationsWeatherBar: React.FC<{ locations: Location[] }> = ({ locations }) => {
-  return (
-    <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar mt-2 mb-4">
-      {locations.map((loc, idx) => (
-        <LocationWeatherMini key={idx} location={loc} />
-      ))}
-    </div>
-  );
-};
-
-// Komponente: Kompaktes Wetter für eine einzelne Location
-const LocationWeatherMini: React.FC<{ location: Location }> = ({ location }) => {
-  const [weather, setWeather] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
-  React.useEffect(() => {
-    let cancelled = false;
-    async function fetchWeather() {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/weather?lat=${location.lat}&lon=${location.lon}`);
-        if (!res.ok) throw new Error('Fehler beim Laden der Wetterdaten');
-        const data = await res.json();
-        if (!cancelled) setWeather(data);
-      } catch {
-        if (!cancelled) setWeather(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    fetchWeather();
-    return () => { cancelled = true; };
-  }, [location.lat, location.lon]);
-  return (
-    <div className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 min-w-[90px] max-w-[120px]">
-      <span className="text-xs font-semibold text-blue-900 truncate mb-1" title={location.name}>{location.name.length > 16 ? location.name.slice(0, 14) + '…' : location.name}</span>
-      {loading ? (
-        <svg className="animate-spin h-5 w-5 text-blue-300" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
-      ) : weather ? (
-        <>
-          {weather.weather?.[0]?.icon && (
-            <img src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}.png`} alt="Wetter" className="w-6 h-6 mb-1" />
-          )}
-          <span className="text-xs text-blue-700 font-semibold">{Math.round(weather.main.temp)}°C</span>
-        </>
-      ) : (
-        <span className="text-gray-400 text-xs">–</span>
-      )}
+      <span className="text-xs text-blue-700 font-semibold">{weather.main?.temp ? Math.round(weather.main.temp) : 'N/A'}°C</span>
     </div>
   );
 };
@@ -336,88 +267,67 @@ const DUMMY_RESTAURANTS = [
   { name: 'Restaurant B', lat: 0, lon: 0 },
 ];
 
-// Hilfsfunktion: Events für einen Tag laden
-function useDayEvents(destination: string, origin: string, radius: string, start: string, end: string) {
-  const [events, setEvents] = React.useState<any[]>([]);
-  React.useEffect(() => {
-    let cancelled = false;
-    async function fetchEvents() {
-      setEvents([]);
-      try {
-        const params = new URLSearchParams({
-          q: destination,
-          origin,
-          radius,
-          start,
-          end,
-          provider: 'all',
-        });
-        const res = await fetch(`/api/events?${params.toString()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) setEvents(data.events || []);
-      } catch {
-        if (!cancelled) setEvents([]);
-      }
-    }
-    if (destination && start && end) fetchEvents();
-    return () => { cancelled = true; };
-  }, [destination, origin, radius, start, end]);
-  return events;
-}
-
-// Hilfsfunktion: Events für den gesamten Reisezeitraum laden
-function useTripEvents(destination: string, origin: string, radius: string, start: string, end: string) {
-  const [events, setEvents] = React.useState<any[]>([]);
-  React.useEffect(() => {
-    let cancelled = false;
-    async function fetchEvents() {
-      setEvents([]);
-      try {
-        const params = new URLSearchParams({
-          q: destination,
-          origin,
-          radius,
-          start,
-          end,
-          provider: 'all',
-        });
-        const res = await fetch(`/api/events?${params.toString()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) setEvents(data.events || []);
-      } catch {
-        if (!cancelled) setEvents([]);
-      }
-    }
-    if (destination && start && end) fetchEvents();
-    return () => { cancelled = true; };
-  }, [destination, origin, radius, start, end]);
-  return events;
+// Ersetze useDayEvents durch eine normale Funktion
+async function fetchDayEvents(destination: string, origin: string, radius: string, start: string, end: string): Promise<EventData[]> {
+  try {
+    const params = new URLSearchParams({
+      q: destination,
+      origin,
+      radius,
+      start,
+      end,
+      provider: 'all',
+    });
+    const res = await fetch(`/api/events?${params.toString()}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.events || [];
+  } catch {
+    return [];
+  }
 }
 
 const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
-  // Fallback: destination nachträglich setzen, falls nicht vorhanden
-  const planWithDestination = { ...plan, destination: plan.destination || plan.locations?.[0]?.name || '' };
-  const days = splitPlanByDays(plan.planText);
+  const [dayEvents, setDayEvents] = React.useState<Record<number, EventData[]>>({});
+  
+  React.useEffect(() => {
+    const fetchAllDayEvents = async () => {
+      const eventsMap: Record<number, EventData[]> = {};
+      const days = splitPlanByDays(plan.planText);
+      
+      for (let idx = 0; idx < days.length; idx++) {
+        const dayDate = dateForDay(idx);
+        if (dayDate) {
+          const events = await fetchDayEvents(
+            plan.destination || plan.locations?.[0]?.name || '',
+            '',
+            '',
+            `${dayDate}T00:00:00Z`,
+            `${dayDate}T23:59:59Z`
+          );
+          eventsMap[idx] = events.filter(ev => {
+            if (!ev.start) return false;
+            const eventDate = new Date(ev.start).toISOString().slice(0, 10);
+            return eventDate === dayDate;
+          });
+        }
+      }
+      setDayEvents(eventsMap);
+    };
+    
+    fetchAllDayEvents();
+  }, [plan]);
+  
   function dateForDay(idx: number): string | undefined {
     if (!plan.startDate) return undefined;
     const d = new Date(plan.startDate);
     d.setDate(d.getDate() + idx);
     return d.toISOString().slice(0, 10);
   }
-  // Events für den gesamten Reisezeitraum laden
-  const tripEvents = useTripEvents(
-    planWithDestination.destination,
-    '',
-    '',
-    plan.startDate ? `${plan.startDate}T00:00:00Z` : '',
-    plan.endDate ? `${plan.endDate}T23:59:59Z` : ''
-  );
-  // Marker für alle Events
-  const tripEventMarkers = tripEvents
-    .filter((ev: any) => ev.venue_lat && ev.venue_lon)
-    .map((ev: any) => ({ name: ev.name, lat: ev.venue_lat, lon: ev.venue_lon, type: 'event' as const }));
+  
+  // Fallback: destination nachträglich setzen, falls nicht vorhanden
+  const planWithDestination = { ...plan, destination: plan.destination || plan.locations?.[0]?.name || '' };
+  const days = splitPlanByDays(plan.planText);
   return (
     <div className="flex flex-col gap-12 mt-8">
       <AnimatePresence>
@@ -426,27 +336,16 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
           const routeLink = googleMapsRouteLink(dayLocations);
           const firstLoc = dayLocations[0];
           const dayDate = dateForDay(idx);
-          // Events für diesen Tag laden
-          const eventsRaw = useDayEvents(
-            planWithDestination.destination,
-            '',
-            '',
-            dayDate ? `${dayDate}T00:00:00Z` : '',
-            dayDate ? `${dayDate}T23:59:59Z` : ''
-          );
-          // Filter: Nur Events am Tag X anzeigen
-          const events = eventsRaw.filter(ev => {
-            if (!ev.start) return false;
-            const eventDate = new Date(ev.start).toISOString().slice(0, 10);
-            return eventDate === dayDate;
-          });
+          const events = dayEvents[idx] || [];
           // Dummy-Restaurants (später ersetzen)
           const restaurants = DUMMY_RESTAURANTS.map((r, i) => ({ ...r, lat: dayLocations[i % dayLocations.length]?.lat || 0, lon: dayLocations[i % dayLocations.length]?.lon || 0 }));
           // Marker für Map: POIs, Events, Restaurants
-          const mapMarkers = [
-            ...dayLocations.map(l => ({ ...l, type: 'poi' as const })),
-            ...events.map(e => ({ name: e.name, lat: e.venue_lat || 0, lon: e.venue_lon || 0, type: 'event' as const })),
-            ...restaurants.map(r => ({ ...r, type: 'restaurant' as const })),
+          const allMarkers: MapMarker[] = [
+            ...plan.locations.map(loc => ({ name: loc.name, lat: loc.lat, lon: loc.lon, type: 'poi' as const })),
+            ...events.filter((ev: EventData) => ev.name && ev.venue_lat && ev.venue_lon).map((ev: EventData) => ({ 
+              name: ev.name!, lat: ev.venue_lat!, lon: ev.venue_lon!, type: 'event' as const 
+            })),
+            ...restaurants.map(r => ({ name: r.name, lat: r.lat, lon: r.lon, type: 'restaurant' as const }))
           ];
           return (
             <motion.div
@@ -471,7 +370,7 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="w-full md:w-1/2 h-72">
                   <MapDisplay
-                    locations={mapMarkers}
+                    locations={allMarkers}
                     iconForType={(type) => {
                       if (type === 'event') return <FaCalendarAlt color="red" size={28} />;
                       if (type === 'restaurant') return <FaUtensils color="green" size={28} />;
@@ -485,10 +384,10 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                     {events.length === 0 ? (
                       <div className="text-gray-400 text-sm">Keine Events gefunden.</div>
                     ) : (
-                      events.map((ev: any) => (
-                        <div key={ev.id} className="flex items-center gap-2 mt-2">
+                      events.map((ev: EventData, evIdx: number) => (
+                        <div key={evIdx} className="flex items-center gap-2 mt-2">
                           <FaCalendarAlt color="red" />
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.venue)}`} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline font-semibold">{ev.name}</a>
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.venue || '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline font-semibold">{ev.name}</a>
                           <span className="text-xs text-gray-500">{ev.start && new Date(ev.start).toLocaleString('de-DE')}</span>
                         </div>
                       ))
@@ -521,8 +420,8 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                 <div className="ml-8 mb-2">
                   <a
                     href={routeLink}
-          target="_blank"
-          rel="noopener noreferrer"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition-colors duration-150 mb-2"
                   >
                     Route auf Google Maps anzeigen

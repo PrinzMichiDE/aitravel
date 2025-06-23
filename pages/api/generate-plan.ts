@@ -75,7 +75,7 @@ Gib die Antwort als **valides JSON-Objekt** aus. Das JSON-Objekt sollte die folg
     try {
       parsedJson = JSON.parse(text);
       parsedJson.destination = destination;
-    } catch (err) {
+    } catch {
       return res.status(500).json({ error: 'Fehler beim Parsen der KI-Antwort. Die Antwort war kein valides JSON.', raw: text });
     }
 

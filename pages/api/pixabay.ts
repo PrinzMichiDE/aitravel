@@ -1,5 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+type PixabayImage = {
+  webformatURL: string;
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { q } = req.query;
   const key = process.env.PIXABAY_KEY;
@@ -16,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(response.status).json({ error: 'Fehler beim Abrufen der Pixabay-Bilder.' });
     }
     const data = await response.json();
-    const images = data.hits.map((img: any) => img.webformatURL).filter(Boolean);
+    const images = data.hits.map((img: PixabayImage) => img.webformatURL).filter(Boolean);
     res.status(200).json({ images });
   } catch (error) {
     console.error(error);

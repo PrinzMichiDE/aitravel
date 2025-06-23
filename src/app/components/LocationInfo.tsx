@@ -39,8 +39,8 @@ async function fetchCommonsImages(title: string): Promise<string[]> {
     const res = await fetch(apiUrl);
     const data = await res.json();
     const pages = data.query?.pages || {};
-    const images = Object.values(pages).flatMap((page: any) => page.images || []);
-    const fileNames = images.map((img: any) => img.title).filter((f: string) => f.match(/\.(jpg|jpeg|png)$/i));
+    const images = Object.values(pages).flatMap((page) => (page as { images?: { title: string }[] }).images || []);
+    const fileNames = images.map((img: { title: string }) => img.title).filter((f: string) => f.match(/\.(jpg|jpeg|png)$/i));
     // Hole URLs zu den Bildern
     const urls: string[] = [];
     for (const file of fileNames.slice(0, 8)) {
@@ -48,7 +48,7 @@ async function fetchCommonsImages(title: string): Promise<string[]> {
       const infoRes = await fetch(infoUrl);
       const infoData = await infoRes.json();
       const infoPages = infoData.query?.pages || {};
-      for (const p of Object.values(infoPages) as any[]) {
+      for (const p of Object.values(infoPages) as { imageinfo?: { url: string }[] }[]) {
         if (p.imageinfo && p.imageinfo[0]?.url) urls.push(p.imageinfo[0].url);
       }
     }
@@ -59,13 +59,23 @@ async function fetchCommonsImages(title: string): Promise<string[]> {
 }
 
 // Event-Box-Komponente
-const EventBox: React.FC<{ event: any }> = ({ event }) => (
+type Event = {
+  id: string;
+  name: string;
+  url: string;
+  image?: string;
+  venue?: string;
+  start?: string;
+  description?: string;
+};
+
+const EventBox: React.FC<{ event: Event }> = ({ event }) => (
   <div className="bg-white border border-blue-100 rounded-lg shadow p-3 flex flex-col md:flex-row gap-3 mb-3 max-w-xl">
     {event.image && <img src={event.image} alt={event.name} className="w-24 h-24 object-cover rounded-lg" />}
     <div className="flex-1">
       <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 font-bold text-lg hover:underline">{event.name}</a>
       <div className="text-xs text-gray-500 mb-1">{event.venue} | {event.start && new Date(event.start).toLocaleString('de-DE')}</div>
-      <div className="text-sm text-gray-700 mb-1 line-clamp-3">{event.description?.slice(0, 180)}{event.description?.length > 180 ? '...' : ''}</div>
+      <div className="text-sm text-gray-700 mb-1 line-clamp-3">{event.description?.slice(0, 180)}{event.description && event.description.length > 180 ? '...' : ''}</div>
       <a href={event.url} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold">Zum Event</a>
     </div>
   </div>
@@ -81,7 +91,7 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon, destination
   const [unsplashImages, setUnsplashImages] = useState<string[]>([]);
   const [pixabayImages, setPixabayImages] = useState<string[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,14 +137,14 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon, destination
         fetch(`/api/events?q=${encodeURIComponent(destination)}`)
           .then(res => res.ok ? res.json() : { events: [] })
           .then(data => setEvents(data.events || []));
-      } catch (err: any) {
+      } catch {
         if (!cancelled) setError('Daten konnten nicht geladen werden.');
       }
       if (!cancelled) setLoading(false);
     }
     fetchData();
     return () => { cancelled = true; };
-  }, [destination]);
+  }, [name, lat, lon, destination]);
 
   function getImagesFromWiki(wiki: WikiData | 'notfound'): string[] {
     if (!wiki || wiki === 'notfound') return [];
