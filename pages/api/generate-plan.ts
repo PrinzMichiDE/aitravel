@@ -70,8 +70,13 @@ Gib die Antwort als **valides JSON-Objekt** aus. Das JSON-Objekt sollte die folg
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
-    const parsedJson = JSON.parse(text);
+    const text = await response.text();
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(text);
+    } catch (err) {
+      return res.status(500).json({ error: 'Fehler beim Parsen der KI-Antwort. Die Antwort war kein valides JSON.', raw: text });
+    }
 
     res.status(200).json(parsedJson);
   } catch (error) {
