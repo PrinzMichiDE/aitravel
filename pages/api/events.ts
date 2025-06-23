@@ -53,13 +53,15 @@ async function geocodeAddress(address: string): Promise<{ lat: number, lon: numb
 async function fetchMeetupEvents(params: any): Promise<Event[]> {
   const apiKey = process.env.MEETUP_API_KEY;
   if (!apiKey) return [];
-  const { q, origin, radius } = params;
+  const { q, origin, radius, start, end } = params;
   const address = origin && typeof origin === 'string' && origin.trim() !== '' ? origin : `Hauptbahnhof ${q}`;
   const geo = await geocodeAddress(address);
   if (!geo) return [];
   // Meetup erwartet Radius in Meilen
   const radiusMiles = radius && typeof radius === 'string' && radius.trim() !== '' ? (parseFloat(radius) * 0.621371).toFixed(1) : '18.6'; // 30km ≈ 18.6mi
-  const url = `https://api.meetup.com/find/upcoming_events?key=${apiKey}&sign=true&lon=${geo.lon}&lat=${geo.lat}&radius=${radiusMiles}`;
+  let url = `https://api.meetup.com/find/upcoming_events?key=${apiKey}&sign=true&lon=${geo.lon}&lat=${geo.lat}&radius=${radiusMiles}`;
+  if (start) url += `&start_date_range=${encodeURIComponent(start)}`;
+  if (end) url += `&end_date_range=${encodeURIComponent(end)}`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
@@ -80,7 +82,7 @@ async function fetchMeetupEvents(params: any): Promise<Event[]> {
 async function fetchTicketmasterEvents(params: any): Promise<Event[]> {
   const apiKey = process.env.TICKETMASTER_API_KEY;
   if (!apiKey) return [];
-  const { q, origin, radius } = params;
+  const { q, origin, radius, start, end } = params;
   // Stadtname aus origin extrahieren (einfach: alles nach letztem Komma, sonst q)
   let city = q;
   if (origin && typeof origin === 'string' && origin.includes(',')) {
@@ -88,7 +90,9 @@ async function fetchTicketmasterEvents(params: any): Promise<Event[]> {
     city = parts[parts.length - 1].trim();
   }
   const within = radius && typeof radius === 'string' && radius.trim() !== '' ? radius : '30';
-  const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${apiKey}&city=${encodeURIComponent(city)}&radius=${within}`;
+  let url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${apiKey}&city=${encodeURIComponent(city)}&radius=${within}`;
+  if (start) url += `&startDateTime=${encodeURIComponent(start)}`;
+  if (end) url += `&endDateTime=${encodeURIComponent(end)}`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
