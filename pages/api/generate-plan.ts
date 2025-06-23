@@ -29,8 +29,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    const prompt = `Erstelle einen detaillierten, tagesbasierten Reiseplan.\nReiseziel: ${destination}\nDauer: ${duration} Tage\nInteressen: ${interests}\n\nGib die Antwort als valides JSON-Objekt aus. Das JSON-Objekt sollte die folgende Struktur haben:\n{\n  \"planText\": \"Ein detaillierter, mit Markdown formatierter Reiseplan als String. Jeder Tag sollte eine Überschrift haben (z.B. '# Tag 1: Ankunft').\",\n  \"locations\": [\n    {\n      \"name\": \"Name des Ortes oder der Sehenswürdigkeit\",\n      \"lat\": 48.8584,\n      \"lon\": 2.2945\n    }\n  ]\n}\n\nExtrahiere die Koordinaten (latitude und longitude) für jeden vorgeschlagenen Ort (Sehenswürdigkeit, Restaurant usw.) und füge sie in das 'locations'-Array ein.\nSei kreativ und versuche, die Interessen bestmöglich zu berücksichtigen. Der 'planText' sollte den gesamten Reiseplan enthalten, wie bisher.`;
+   const prompt = `Du bist ein erfahrener Reiseplaner. Deine Aufgabe ist es, einen **detaillierten, tagesbasierten Reiseplan** zu erstellen, der perfekt auf die Interessen des Reisenden zugeschnitten ist.
 
+**Reiseziel:** ${destination}
+**Dauer:** ${duration} Tage
+**Interessen:** ${interests}
+
+**Wichtige Anweisungen für den Reiseplan:**
+
+1. **Detaillierung:** Jeder Tag sollte mindestens 3-5 Aktivitäten oder Sehenswürdigkeiten umfassen, inklusive Vorschlägen für Mahlzeiten (Frühstück, Mittagessen, Abendessen), die zu den Interessen passen.
+2. **Reisezeit & Logistik:** Berücksichtige realistische Reisezeiten zwischen den Orten.
+3. **Anpassung an Interessen:** Integriere die genannten Interessen auf kreative Weise in jede Tagesplanung. Schlage nicht nur offensichtliche, sondern auch einzigartige Erlebnisse vor.
+4. **Flexibilität:** Der Plan sollte eine gute Mischung aus Hauptattraktionen und Möglichkeiten zur Entspannung oder freien Zeit bieten.
+5. **Ankunft/Abreise:** Plane den ersten und letzten Tag entsprechend als Ankunfts- und Abreisetag.
+6. **Sprache:** Der gesamte Reiseplan sollte auf Deutsch verfasst sein.
+
+**Ausgabeformat:**
+
+Gib die Antwort als **valides JSON-Objekt** aus. Das JSON-Objekt sollte die folgende Struktur haben:
+
+\`\`\`json
+{
+  "planText": "Ein detaillierter, mit Markdown formatierter Reiseplan als String. Jeder Tag sollte eine Überschrift haben (z.B. '# Tag 1: Ankunft in [Stadtname]'), gefolgt von einer detaillierten Beschreibung der Aktivitäten, Essensvorschläge und optionalen Tipps für den jeweiligen Tag.",
+  "locations": [
+    {
+      "name": "Name des Ortes oder der Sehenswürdigkeit",
+      "lat": 48.8584,
+      "lon": 2.2945
+    }
+  ]
+}
+\`\`\``;
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.0-flash',
