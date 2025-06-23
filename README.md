@@ -64,3 +64,5 @@ Entwicklung einer modernen, KI-gestützten Webanwendung, die Reisenden personali
 ---
 
 **Letzte Änderung:** Wetter- und Wikipedia-API-Routen hinzugefügt (Stand: $(date +%Y-%m-%d)). 
+
+**Events:** API-Route `/api/events` (Eventbrite), Events werden pro Reiseziel angezeigt, nicht pro POI. Die API bekommt jetzt immer das Reiseziel (`destination`) als Query, nie mehr den POI-Namen. Robuster Fallback, falls kein Ziel vorhanden ist. 
