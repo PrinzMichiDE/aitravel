@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 // Typdefinition für einen Ort
 export interface Location {
@@ -21,7 +22,21 @@ const MapDisplay = dynamic(() => import('./components/MapDisplay'), {
   loading: () => <div style={{height: '400px', width: '100%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center'}}><p>Karte wird geladen...</p></div>
 });
 
+const NotLoggedIn = () => (
+  <div className="w-full max-w-4xl bg-white p-8 rounded-lg shadow-md text-center">
+    <h2 className="text-2xl font-bold mb-4 text-gray-800">Willkommen beim Intelligenten Reiseführer!</h2>
+    <p className="text-gray-600 mb-6">Bitte melden Sie sich an, um Ihren persönlichen Reiseplan zu erstellen.</p>
+    <a
+      href="/api/auth/login"
+      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+    >
+      Anmelden
+    </a>
+  </div>
+);
+
 const TravelPlanner = () => {
+  const { user } = useUser();
   const [destination, setDestination] = useState('');
   const [duration, setDuration] = useState('');
   const [interests, setInterests] = useState('');
@@ -29,12 +44,30 @@ const TravelPlanner = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<TravelPlan | null>(null);
+  const [isPlanSaved, setIsPlanSaved] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user) {
+      setLoading(true);
+      fetch('/api/plan/load')
+        .then(res => res.json())
+        .then(data => {
+          if (data) {
+            setPlan(data);
+            setIsPlanSaved(true);
+          }
+        })
+        .catch(err => setError('Fehler beim Laden des gespeicherten Plans.'))
+        .finally(() => setLoading(false));
+    }
+  }, [user]);
+
+  const handleGenerateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setPlan(null);
+    setIsPlanSaved(false);
 
     try {
       const response = await fetch('/api/generate-plan', {
@@ -59,11 +92,33 @@ const TravelPlanner = () => {
     }
   };
 
+  const handleSavePlan = async () => {
+    if (!plan) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await fetch('/api/plan/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(plan),
+      });
+      setIsPlanSaved(true);
+    } catch (err) {
+      setError('Fehler beim Speichern des Plans.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!user) {
+    return <NotLoggedIn />;
+  }
+
   return (
     <div className="w-full max-w-7xl">
       <div className="bg-white p-8 rounded-lg shadow-md">
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Plane deine Traumreise</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleGenerateSubmit}>
           <div className="mb-4">
             <label htmlFor="destination" className="block text-gray-700 text-sm font-bold mb-2">Reiseziel</label>
             <input id="destination" type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="z.B. Paris, Frankreich" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
@@ -78,7 +133,7 @@ const TravelPlanner = () => {
           </div>
           <div className="flex items-center justify-center">
             <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-blue-300" disabled={loading}>
-              {loading ? 'Reiseplan wird erstellt...' : 'Reiseplan erstellen'}
+              {loading && !plan ? 'Reiseplan wird erstellt...' : 'Neuen Reiseplan erstellen'}
             </button>
           </div>
         </form>
@@ -93,7 +148,18 @@ const TravelPlanner = () => {
 
       {plan && (
         <div className="mt-6 bg-white p-8 rounded-lg shadow-md">
-          <h3 className="text-2xl font-bold mb-4 text-gray-800">Dein persönlicher Reiseplan</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-bold text-gray-800">Dein persönlicher Reiseplan</h3>
+            {!isPlanSaved && (
+              <button
+                onClick={handleSavePlan}
+                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-green-300"
+                disabled={loading}
+              >
+                {loading ? 'Wird gespeichert...' : 'Diesen Plan speichern'}
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <pre className="whitespace-pre-wrap font-sans text-gray-700 bg-gray-50 p-4 rounded-lg overflow-x-auto h-[600px]">
               {plan.planText}
@@ -109,6 +175,8 @@ const TravelPlanner = () => {
 };
 
 export default function Home() {
+  const { user, isLoading } = useUser();
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-100">
       <div className="text-center mb-12">
@@ -117,7 +185,10 @@ export default function Home() {
           Erhalte personalisierte, dynamische und kontextbezogene Reisepläne, erstellt von unserer KI. Ein proaktiver, interaktiver Reisebegleiter, der sich in Echtzeit an deine Bedürfnisse anpasst.
         </p>
       </div>
-      <TravelPlanner />
+      
+      {isLoading && <p>Lade Sitzung...</p>}
+      {!isLoading && !user && <NotLoggedIn />}
+      {user && <TravelPlanner />}
     </main>
   );
 }

@@ -1,6 +1,19 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSession } from '@auth0/nextjs-auth0';
 
 export async function POST(req: Request) {
+  const session = await getSession();
+
+  if (!session || !session.user) {
+    return new Response(
+      JSON.stringify({ error: 'Nicht authentifiziert.' }),
+      {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
   // 1. API-Schlüssel aus den Umgebungsvariablen lesen
   const apiKey = process.env.GEMINI_API_KEY;
 
