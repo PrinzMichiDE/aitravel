@@ -367,6 +367,8 @@ function useDayEvents(destination: string, origin: string, radius: string, start
 }
 
 const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
+  // Fallback: destination nachträglich setzen, falls nicht vorhanden
+  const planWithDestination = { ...plan, destination: plan.destination || plan.locations?.[0]?.name || '' };
   const days = splitPlanByDays(plan.planText);
   function dateForDay(idx: number): string | undefined {
     if (!plan.startDate) return undefined;
@@ -383,20 +385,26 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
           const firstLoc = dayLocations[0];
           const dayDate = dateForDay(idx);
           // Events für diesen Tag laden
-          const events = useDayEvents(
-            plan.destination || 'Berlin',
-            '', // origin ggf. aus Plan ergänzen
-            '', // radius ggf. aus Plan ergänzen
+          const eventsRaw = useDayEvents(
+            planWithDestination.destination,
+            '',
+            '',
             dayDate ? `${dayDate}T00:00:00Z` : '',
             dayDate ? `${dayDate}T23:59:59Z` : ''
           );
+          // Filter: Nur Events am Tag X anzeigen
+          const events = eventsRaw.filter(ev => {
+            if (!ev.start) return false;
+            const eventDate = new Date(ev.start).toISOString().slice(0, 10);
+            return eventDate === dayDate;
+          });
           // Dummy-Restaurants (später ersetzen)
           const restaurants = DUMMY_RESTAURANTS.map((r, i) => ({ ...r, lat: dayLocations[i % dayLocations.length]?.lat || 0, lon: dayLocations[i % dayLocations.length]?.lon || 0 }));
           // Marker für Map: POIs, Events, Restaurants
           const mapMarkers = [
-            ...dayLocations.map(l => ({ ...l, type: 'poi' })),
-            ...events.map(e => ({ name: e.name, lat: e.venue_lat || 0, lon: e.venue_lon || 0, type: 'event' })),
-            ...restaurants.map(r => ({ ...r, type: 'restaurant' })),
+            ...dayLocations.map(l => ({ ...l, type: 'poi' as const })),
+            ...events.map(e => ({ name: e.name, lat: e.venue_lat || 0, lon: e.venue_lon || 0, type: 'event' as const })),
+            ...restaurants.map(r => ({ ...r, type: 'restaurant' as const })),
           ];
           return (
             <motion.div
@@ -467,8 +475,8 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                 <div className="ml-8 mb-2">
                   <a
                     href={routeLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
+          target="_blank"
+          rel="noopener noreferrer"
                     className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition-colors duration-150 mb-2"
                   >
                     Route auf Google Maps anzeigen
