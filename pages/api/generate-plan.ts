@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 **Interessen:** ${interests}
 
 **Wichtige Anweisungen für den Reiseplan:**
-
+0. **Achte drauf das die Ziele an den Tagen möglichst nahe beieinander liegen.**
 1. **Detaillierung:** Jeder Tag sollte mindestens 3-5 Aktivitäten oder Sehenswürdigkeiten umfassen, inklusive Vorschlägen für Mahlzeiten (Frühstück, Mittagessen, Abendessen), die zu den Interessen passen.
 2. **Reisezeit & Logistik:** Berücksichtige realistische Reisezeiten zwischen den Orten.
 3. **Anpassung an Interessen:** Integriere die genannten Interessen auf kreative Weise in jede Tagesplanung. Schlage nicht nur offensichtliche, sondern auch einzigartige Erlebnisse vor.
