@@ -2,77 +2,85 @@
 
 import { useState } from 'react';
 
-// Temporäre Komponente für den Reiseplaner.
-// Wird später in eine eigene Datei ausgelagert.
 const TravelPlanner = () => {
   const [destination, setDestination] = useState('');
   const [duration, setDuration] = useState('');
   const [interests, setInterests] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Hier wird später die Gemini API aufgerufen
-    console.log({ destination, duration, interests });
-    alert('Reiseplan wird erstellt... (Funktionalität wird noch implementiert)');
+    setLoading(true);
+    setError(null);
+    setPlan(null);
+
+    try {
+      const response = await fetch('/api/generate-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ destination, duration, interests }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ein unbekannter Fehler ist aufgetreten.');
+      }
+
+      setPlan(data.plan);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-lg bg-white p-8 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Plane deine Traumreise</h2>
-      <div className="mb-4">
-        <label htmlFor="destination" className="block text-gray-700 text-sm font-bold mb-2">
-          Reiseziel
-        </label>
-        <input
-          id="destination"
-          type="text"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder="z.B. Paris, Frankreich"
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          required
-        />
+    <div className="w-full max-w-4xl">
+      <div className="bg-white p-8 rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Plane deine Traumreise</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="destination" className="block text-gray-700 text-sm font-bold mb-2">Reiseziel</label>
+            <input id="destination" type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="z.B. Paris, Frankreich" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="duration" className="block text-gray-700 text-sm font-bold mb-2">Reisedauer (in Tagen)</label>
+            <input id="duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="z.B. 7" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+          </div>
+          <div className="mb-6">
+            <label htmlFor="interests" className="block text-gray-700 text-sm font-bold mb-2">Interessen & Vorlieben</label>
+            <textarea id="interests" value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="z.B. Kunstmuseen, historische Stätten, vegetarisches Essen" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" rows={4} required />
+          </div>
+          <div className="flex items-center justify-center">
+            <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-blue-300" disabled={loading}>
+              {loading ? 'Reiseplan wird erstellt...' : 'Reiseplan erstellen'}
+            </button>
+          </div>
+        </form>
       </div>
-      <div className="mb-4">
-        <label htmlFor="duration" className="block text-gray-700 text-sm font-bold mb-2">
-          Reisedauer (in Tagen)
-        </label>
-        <input
-          id="duration"
-          type="number"
-          value={duration}
-          onChange={(e) => setDuration(e.target.value)}
-          placeholder="z.B. 7"
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          required
-        />
-      </div>
-      <div className="mb-6">
-        <label htmlFor="interests" className="block text-gray-700 text-sm font-bold mb-2">
-          Interessen & Vorlieben
-        </label>
-        <textarea
-          id="interests"
-          value={interests}
-          onChange={(e) => setInterests(e.target.value)}
-          placeholder="z.B. Kunstmuseen, historische Stätten, vegetarisches Essen"
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
-          rows={4}
-          required
-        />
-      </div>
-      <div className="flex items-center justify-center">
-        <button
-          type="submit"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-        >
-          Reiseplan erstellen
-        </button>
-      </div>
-    </form>
+
+      {error && (
+        <div className="mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Fehler: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+
+      {plan && (
+        <div className="mt-6 bg-white p-8 rounded-lg shadow-md">
+          <h3 className="text-2xl font-bold mb-4 text-gray-800">Dein persönlicher Reiseplan</h3>
+          <pre className="whitespace-pre-wrap font-sans text-gray-700">{plan}</pre>
+        </div>
+      )}
+    </div>
   );
 };
-
 
 export default function Home() {
   return (
