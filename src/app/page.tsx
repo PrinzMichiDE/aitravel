@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import ReactMarkdown from 'react-markdown';
 import LocationInfo from './components/LocationInfo';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Typdefinition für einen Ort
 export interface Location {
@@ -127,27 +128,8 @@ const TravelPlanner = () => {
       )}
 
       {plan && (
-        <div className="mt-6 bg-white p-8 rounded-lg shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-bold text-gray-800">Dein persönlicher Reiseplan</h3>
-            {!isPlanSaved && (
-              <button
-                onClick={handleSavePlan}
-                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-green-300"
-                disabled={loading}
-              >
-                {loading ? 'Wird gespeichert...' : 'Diesen Plan speichern'}
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <pre className="whitespace-pre-wrap font-sans text-gray-700 bg-gray-50 p-4 rounded-lg overflow-x-auto h-[600px]">
-              {plan.planText}
-            </pre>
-            <div className="h-[600px]">
-              <MapDisplay locations={plan.locations} />
-            </div>
-          </div>
+        <div className="mt-6">
+          <RoadtripView plan={plan} />
         </div>
       )}
     </div>
@@ -184,43 +166,64 @@ const SavedPlan: React.FC = () => {
   if (!savedPlan) return <div className="mt-8 text-gray-500">Kein gespeicherter Plan vorhanden.</div>;
 
   return (
-    <div className="mt-8 bg-white p-8 rounded-lg shadow-md">
-      <h3 className="text-2xl font-bold text-gray-800 mb-4">Dein gespeicherter Reiseplan</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="h-[600px] overflow-y-auto">
-          <div className="prose prose-blue max-w-none">
-            <ReactMarkdown>{savedPlan.planText}</ReactMarkdown>
-          </div>
-          <div className="mt-6">
-            <h4 className="text-lg font-semibold mb-2">Orte & Links</h4>
-            {savedPlan.locations.map((loc, idx) => (
-              <div key={idx} className="mb-2 flex flex-col md:flex-row md:items-center md:gap-2">
-                <span className="font-medium">{loc.name}</span>
-                <LocationInfo name={loc.name} lat={loc.lat} lon={loc.lon} />
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lon}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline ml-2"
-                >
-                  Google Maps
-                </a>
-                <a
-                  href={`https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(loc.name)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-600 underline ml-2"
-                >
-                  Wikipedia
-                </a>
+    <div className="mt-8">
+      <RoadtripView plan={savedPlan} />
+    </div>
+  );
+};
+
+// Hilfsfunktion: Tagesabschnitte aus Markdown extrahieren
+function splitPlanByDays(planText: string): { title: string, content: string }[] {
+  const dayRegex = /^(#+\s*Tag\s*\d+[:\s-].*)$/gim;
+  const matches = [...planText.matchAll(dayRegex)];
+  if (matches.length === 0) return [{ title: 'Reiseplan', content: planText }];
+  const result: { title: string, content: string }[] = [];
+  for (let i = 0; i < matches.length; i++) {
+    const start = matches[i].index!;
+    const end = matches[i + 1]?.index ?? planText.length;
+    const title = matches[i][1].replace(/^#+\s*/, '');
+    const content = planText.slice(start + matches[i][1].length, end).trim();
+    result.push({ title, content });
+  }
+  return result;
+}
+
+const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
+  const days = splitPlanByDays(plan.planText);
+  // Optionale Zuordnung: Locations pro Tag (vereinfachte Heuristik)
+  // Hier: Alle Locations werden unter jedem Tag angezeigt (besser: NLP, aber für Demo reicht das)
+  return (
+    <div className="flex flex-col gap-8 mt-8">
+      <AnimatePresence>
+        {days.map((day, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.5, delay: idx * 0.15 }}
+            className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 relative overflow-hidden"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg shadow-sm animate-bounce-slow">
+                {idx + 1}
               </div>
-            ))}
-          </div>
-        </div>
-        <div className="h-[600px]">
-          <MapDisplay locations={savedPlan.locations} />
-        </div>
-      </div>
+              <h3 className="text-xl md:text-2xl font-bold text-blue-800 tracking-tight">{day.title}</h3>
+            </div>
+            <div className="prose max-w-none mb-4">
+              <ReactMarkdown>{day.content}</ReactMarkdown>
+            </div>
+            <div className="flex flex-wrap gap-4 mt-2">
+              {plan.locations.map((loc, lidx) => (
+                <div key={lidx} className="min-w-[220px] max-w-xs flex-1">
+                  <span className="font-semibold text-gray-700">{loc.name}</span>
+                  <LocationInfo name={loc.name} lat={loc.lat} lon={loc.lon} />
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 };

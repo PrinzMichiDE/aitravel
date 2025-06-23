@@ -12,6 +12,7 @@
     "@auth0/nextjs-auth0": "^3.7.0",
     "@google/generative-ai": "^0.24.1",
     "@types/leaflet": "^1.9.18",
+    "framer-motion": "^12.19.1",
     "leaflet": "^1.9.4",
     "mongoose": "^8.16.0",
     "next": "15.3.4",
