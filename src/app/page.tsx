@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import ReactMarkdown from 'react-markdown';
+import LocationInfo from './components/LocationInfo';
 
 // Typdefinition für einen Ort
 export interface Location {
@@ -195,6 +196,7 @@ const SavedPlan: React.FC = () => {
             {savedPlan.locations.map((loc, idx) => (
               <div key={idx} className="mb-2 flex flex-col md:flex-row md:items-center md:gap-2">
                 <span className="font-medium">{loc.name}</span>
+                <LocationInfo name={loc.name} lat={loc.lat} lon={loc.lon} />
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lon}`}
                   target="_blank"
