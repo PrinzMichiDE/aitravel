@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { q, start, end } = req.query;
+  const { q, start, end, origin, radius } = req.query;
   const token = process.env.EVENTBRITE_TOKEN;
   if (!token) {
     return res.status(500).json({ error: 'EVENTBRITE_TOKEN fehlt.' });
@@ -9,8 +9,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!q) {
     return res.status(400).json({ error: 'Suchbegriff (q) erforderlich.' });
   }
+  // Fallbacks
+  const address = origin && typeof origin === 'string' && origin.trim() !== '' ? origin : `Hauptbahnhof ${q}`;
+  const within = radius && typeof radius === 'string' && radius.trim() !== '' ? `${radius}km` : '30km';
   try {
-    let url = `https://www.eventbriteapi.com/v3/events/search/?q=${encodeURIComponent(q as string)}&expand=venue,logo&token=${token}`;
+    let url = `https://www.eventbriteapi.com/v3/events/search/?location.address=${encodeURIComponent(address)}&location.within=${encodeURIComponent(within)}&expand=venue,logo&token=${token}`;
     if (start) url += `&start_date.range_start=${encodeURIComponent(start as string)}`;
     if (end) url += `&start_date.range_end=${encodeURIComponent(end as string)}`;
     const response = await fetch(url);
