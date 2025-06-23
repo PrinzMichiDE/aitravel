@@ -13,6 +13,10 @@ interface WikiData {
   content_urls?: { desktop?: { page: string } };
   description?: string;
   type?: string; // für Fehler/404
+  wikidata?: string;
+  menu?: string;
+  tickets?: string;
+  website?: string;
 }
 
 const cache: Record<string, { wiki?: WikiData | 'notfound' }> = {};
@@ -26,13 +30,40 @@ function extractOpeningHours(text: string): string | null {
   return match ? match[0] : null;
 }
 
+// Hilfsfunktion: Hole Wikimedia Commons Bilder (max 8)
+async function fetchCommonsImages(title: string): Promise<string[]> {
+  try {
+    const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=images&titles=${encodeURIComponent(title)}`;
+    const res = await fetch(apiUrl);
+    const data = await res.json();
+    const pages = data.query?.pages || {};
+    const images = Object.values(pages).flatMap((page: any) => page.images || []);
+    const fileNames = images.map((img: any) => img.title).filter((f: string) => f.match(/\.(jpg|jpeg|png)$/i));
+    // Hole URLs zu den Bildern
+    const urls: string[] = [];
+    for (const file of fileNames.slice(0, 8)) {
+      const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=url&titles=${encodeURIComponent(file)}`;
+      const infoRes = await fetch(infoUrl);
+      const infoData = await infoRes.json();
+      const infoPages = infoData.query?.pages || {};
+      for (const p of Object.values(infoPages) as any[]) {
+        if (p.imageinfo && p.imageinfo[0]?.url) urls.push(p.imageinfo[0].url);
+      }
+    }
+    return urls;
+  } catch {
+    return [];
+  }
+}
+
 const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
   const [wiki, setWiki] = useState<WikiData | 'notfound'>('notfound');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
-  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [extraImages, setExtraImages] = useState<string[]>([]);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +76,6 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
           setWiki(cache[cacheKey].wiki!);
           setLoading(false);
           const imgs = getImagesFromWiki(cache[cacheKey].wiki!);
-          setGalleryImages(imgs);
           return;
         }
         const wikiRes = await fetch(`/api/wiki?title=${encodeURIComponent(name)}`);
@@ -64,10 +94,10 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
         }
         if (!cancelled) {
           setWiki(wikiData);
-          const imgs = getImagesFromWiki(wikiData);
-          setGalleryImages(imgs);
           cache[cacheKey] = { wiki: wikiData };
         }
+        // Hole zusätzliche Commons-Bilder
+        fetchCommonsImages(name).then(imgs => setExtraImages(imgs));
       } catch (err: any) {
         if (!cancelled) setError('Daten konnten nicht geladen werden.');
       }
@@ -84,6 +114,9 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
     if (wiki.thumbnail?.source && (!images.length || images[0] !== wiki.thumbnail.source)) images.push(wiki.thumbnail.source);
     return images;
   }
+
+  // Kombiniere alle Bilder (nur eine galleryImages-Variable!)
+  const galleryImages: string[] = [...getImagesFromWiki(wiki), ...extraImages];
 
   if (loading) return (
     <div className="flex items-center gap-2 text-gray-400 text-sm animate-pulse min-h-[120px]">
@@ -115,7 +148,7 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
                 key={idx}
                 src={img}
                 alt={`Bild ${idx + 1}`}
-                className={`w-24 h-24 object-cover rounded-lg shadow cursor-pointer border-2 ${galleryIdx === idx ? 'border-blue-500' : 'border-transparent'}`}
+                className={`w-24 h-24 object-cover rounded-lg shadow cursor-pointer border-2 ${galleryIdx === idx ? 'border-blue-500' : 'border-transparent'} transition-all duration-200`}
                 onClick={() => { setGalleryIdx(idx); setGalleryOpen(true); }}
                 tabIndex={0}
                 onKeyDown={e => { if (e.key === 'Enter') { setGalleryIdx(idx); setGalleryOpen(true); }}}
@@ -125,9 +158,9 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
         </div>
       )}
       {galleryOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70" onClick={() => setGalleryOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 animate-fade-in" onClick={() => setGalleryOpen(false)}>
           <div className="relative" onClick={e => e.stopPropagation()}>
-            <img src={galleryImages[galleryIdx]} alt="Großansicht" className="max-h-[80vh] max-w-[90vw] rounded-xl shadow-2xl" />
+            <img src={galleryImages[galleryIdx]} alt="Großansicht" className="max-h-[80vh] max-w-[90vw] rounded-xl shadow-2xl transition-all duration-300" />
             <button className="absolute top-2 right-2 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-opacity-100" onClick={() => setGalleryOpen(false)} aria-label="Schließen">✕</button>
             {galleryImages.length > 1 && (
               <>
@@ -138,6 +171,11 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
           </div>
         </div>
       )}
+      <div className="flex gap-2 mt-1 mb-1">
+        <button onClick={() => { setIsFavorite(f => !f); localStorage.setItem(`fav_${name}`, (!isFavorite).toString()); }} aria-label="Favorit" className={`p-2 rounded-full shadow ${isFavorite ? 'bg-yellow-300' : 'bg-gray-200'} hover:bg-yellow-400 transition`} title="Als Favorit speichern">★</button>
+        <button onClick={() => { navigator.clipboard.writeText(window.location.href + `#${encodeURIComponent(name)}`); }} aria-label="Teilen" className="p-2 rounded-full shadow bg-blue-200 hover:bg-blue-400 transition" title="Link teilen">🔗</button>
+        <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full shadow bg-green-200 hover:bg-green-400 transition" title="Auf Karte anzeigen">🗺️</a>
+      </div>
       <span className="font-bold text-base text-blue-900 text-center mb-1">{name}</span>
       {wiki.description && <span className="text-xs text-blue-700 mb-1 text-center">{wiki.description}</span>}
       <span className="text-sm text-gray-700 text-center">
@@ -148,9 +186,20 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
       {openingHours && (
         <span className="text-xs text-green-700 font-semibold mt-1">{openingHours}</span>
       )}
-      {wiki.content_urls?.desktop?.page && (
-        <a href={wiki.content_urls.desktop.page} target="_blank" rel="noopener noreferrer" className="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded shadow text-xs font-semibold transition-colors">Mehr auf Wikipedia</a>
-      )}
+      <div className="flex flex-wrap gap-2 mt-2">
+        {wiki.content_urls?.desktop?.page && (
+          <a href={wiki.content_urls.desktop.page} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded shadow text-xs font-semibold transition-colors">Mehr auf Wikipedia</a>
+        )}
+        {wiki.website && (
+          <a href={wiki.website} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded shadow text-xs font-semibold transition-colors">Webseite</a>
+        )}
+        {wiki.menu && (
+          <a href={wiki.menu} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-pink-600 hover:bg-pink-700 text-white rounded shadow text-xs font-semibold transition-colors">Speisekarte</a>
+        )}
+        {wiki.tickets && (
+          <a href={wiki.tickets} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded shadow text-xs font-semibold transition-colors">Tickets kaufen</a>
+        )}
+      </div>
     </div>
   );
 };
