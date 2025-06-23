@@ -48,7 +48,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({ locations, iconForType }) => {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {locations && locations.map((loc, index) => (
-        <Marker key={index} position={[loc.lat, loc.lon]} icon={undefined}>
+        <Marker key={index} position={[loc.lat, loc.lon]}>
           <Popup>
             <div className="flex items-center gap-2">
               {iconForType ? iconForType(loc.type) : null}
