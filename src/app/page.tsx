@@ -366,6 +366,36 @@ function useDayEvents(destination: string, origin: string, radius: string, start
   return events;
 }
 
+// Hilfsfunktion: Events für den gesamten Reisezeitraum laden
+function useTripEvents(destination: string, origin: string, radius: string, start: string, end: string) {
+  const [events, setEvents] = React.useState<any[]>([]);
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchEvents() {
+      setEvents([]);
+      try {
+        const params = new URLSearchParams({
+          q: destination,
+          origin,
+          radius,
+          start,
+          end,
+          provider: 'all',
+        });
+        const res = await fetch(`/api/events?${params.toString()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setEvents(data.events || []);
+      } catch {
+        if (!cancelled) setEvents([]);
+      }
+    }
+    if (destination && start && end) fetchEvents();
+    return () => { cancelled = true; };
+  }, [destination, origin, radius, start, end]);
+  return events;
+}
+
 const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
   // Fallback: destination nachträglich setzen, falls nicht vorhanden
   const planWithDestination = { ...plan, destination: plan.destination || plan.locations?.[0]?.name || '' };
@@ -376,6 +406,18 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
     d.setDate(d.getDate() + idx);
     return d.toISOString().slice(0, 10);
   }
+  // Events für den gesamten Reisezeitraum laden
+  const tripEvents = useTripEvents(
+    planWithDestination.destination,
+    '',
+    '',
+    plan.startDate ? `${plan.startDate}T00:00:00Z` : '',
+    plan.endDate ? `${plan.endDate}T23:59:59Z` : ''
+  );
+  // Marker für alle Events
+  const tripEventMarkers = tripEvents
+    .filter((ev: any) => ev.venue_lat && ev.venue_lon)
+    .map((ev: any) => ({ name: ev.name, lat: ev.venue_lat, lon: ev.venue_lon, type: 'event' as const }));
   return (
     <div className="flex flex-col gap-12 mt-8">
       <AnimatePresence>
@@ -443,10 +485,10 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                     {events.length === 0 ? (
                       <div className="text-gray-400 text-sm">Keine Events gefunden.</div>
                     ) : (
-                      events.map(ev => (
+                      events.map((ev: any) => (
                         <div key={ev.id} className="flex items-center gap-2 mt-2">
                           <FaCalendarAlt color="red" />
-                          <a href={ev.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline font-semibold">{ev.name}</a>
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.venue)}`} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline font-semibold">{ev.name}</a>
                           <span className="text-xs text-gray-500">{ev.start && new Date(ev.start).toLocaleString('de-DE')}</span>
                         </div>
                       ))
@@ -479,8 +521,8 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                 <div className="ml-8 mb-2">
                   <a
                     href={routeLink}
-          target="_blank"
-          rel="noopener noreferrer"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition-colors duration-150 mb-2"
                   >
                     Route auf Google Maps anzeigen
