@@ -49,6 +49,8 @@ const TravelPlanner = () => {
   const [origin, setOrigin] = useState('');
   const [accommodation, setAccommodation] = useState('');
   const [radius, setRadius] = useState('');
+  const [eventStart, setEventStart] = useState('');
+  const [eventEnd, setEventEnd] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +78,7 @@ const TravelPlanner = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ destination, duration, interests, startDate, endDate, origin, accommodation, radius }),
+        body: JSON.stringify({ destination, duration, interests, startDate, endDate, origin, accommodation, radius, eventStart, eventEnd }),
       });
 
       const data = await response.json();
@@ -143,6 +145,16 @@ const TravelPlanner = () => {
             <div className="flex-1">
               <label htmlFor="endDate" className="block text-gray-700 text-sm font-bold mb-2">Reiseende</label>
               <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+            </div>
+          </div>
+          <div className="mb-4 flex gap-4">
+            <div className="flex-1">
+              <label htmlFor="eventStart" className="block text-gray-700 text-sm font-bold mb-2">Event-Beginn (von, optional)</label>
+              <input id="eventStart" type="date" value={eventStart} onChange={(e) => setEventStart(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="eventEnd" className="block text-gray-700 text-sm font-bold mb-2">Event-Ende (bis, optional)</label>
+              <input id="eventEnd" type="date" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
             </div>
           </div>
           <div className="mb-6">
