@@ -46,6 +46,9 @@ const TravelPlanner = () => {
   const [interests, setInterests] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [origin, setOrigin] = useState('');
+  const [accommodation, setAccommodation] = useState('');
+  const [radius, setRadius] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +76,7 @@ const TravelPlanner = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ destination, duration, interests, startDate, endDate }),
+        body: JSON.stringify({ destination, duration, interests, startDate, endDate, origin, accommodation, radius }),
       });
 
       const data = await response.json();
@@ -116,6 +119,21 @@ const TravelPlanner = () => {
           <div className="mb-4">
             <label htmlFor="destination" className="block text-gray-700 text-sm font-bold mb-2">Reiseziel</label>
             <input id="destination" type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="z.B. Paris, Frankreich" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="origin" className="block text-gray-700 text-sm font-bold mb-2">Ausgangspunkt (optional)</label>
+            <input id="origin" type="text" value={origin} onChange={(e) => setOrigin(e.target.value)} placeholder="z.B. Alexanderplatz, Berlin" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+            <span className="text-xs text-gray-500">Wird für die Eventsuche verwendet. Wenn leer, wird automatisch der Hauptbahnhof des Reiseziels genutzt.</span>
+          </div>
+          <div className="mb-4">
+            <label htmlFor="accommodation" className="block text-gray-700 text-sm font-bold mb-2">Übernachtungspunkt (optional)</label>
+            <input id="accommodation" type="text" value={accommodation} onChange={(e) => setAccommodation(e.target.value)} placeholder="z.B. Hotel Adlon, Berlin" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+            <span className="text-xs text-gray-500">Optional, wird für die KI-Planung verwendet.</span>
+          </div>
+          <div className="mb-4">
+            <label htmlFor="radius" className="block text-gray-700 text-sm font-bold mb-2">Umkreis für Events (km, optional)</label>
+            <input id="radius" type="number" min="1" max="100" value={radius} onChange={(e) => setRadius(e.target.value)} placeholder="30" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-32" />
+            <span className="text-xs text-gray-500">Standard: 30 km</span>
           </div>
           <div className="mb-4 flex gap-4">
             <div className="flex-1">
