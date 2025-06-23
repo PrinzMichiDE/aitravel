@@ -65,4 +65,4 @@ Entwicklung einer modernen, KI-gestützten Webanwendung, die Reisenden personali
 
 **Letzte Änderung:** Wetter- und Wikipedia-API-Routen hinzugefügt (Stand: $(date +%Y-%m-%d)). 
 
-**Events:** API-Route `/api/events` (Eventbrite), Events werden pro Reiseziel angezeigt, nicht pro POI. Die API bekommt jetzt immer das Reiseziel (`destination`) als Query, nie mehr den POI-Namen. Robuster Fallback, falls kein Ziel vorhanden ist. 
+**Events:** API-Route `/api/events` (Eventbrite), Events werden jetzt über einen frei wählbaren Ausgangspunkt (Adresse, optional) und einen Umkreis (km, optional, Standard 30km) gesucht. Wenn kein Ausgangspunkt angegeben ist, wird automatisch "Hauptbahnhof {Reiseziel}" verwendet. Die API nutzt `location.address` und `location.within` gemäß [Eventbrite API Reference – Event Search](https://www.eventbrite.com/platform/api#/reference/event-search). Übernachtungspunkt ist optional für die KI-Planung. 
