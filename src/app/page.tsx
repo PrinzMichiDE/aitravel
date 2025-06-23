@@ -184,11 +184,14 @@ const SavedPlan: React.FC = () => {
   return (
     <div className="mt-8 bg-white p-8 rounded-lg shadow-md">
       <h3 className="text-2xl font-bold text-gray-800 mb-4">Dein gespeicherter Reiseplan</h3>
-      <pre className="whitespace-pre-wrap font-sans text-gray-700 bg-gray-50 p-4 rounded-lg overflow-x-auto">
-        {savedPlan.planText}
-      </pre>
-      {/* Optional: MapDisplay für gespeicherte Orte */}
-      {/* <MapDisplay locations={savedPlan.locations} /> */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <pre className="whitespace-pre-wrap font-sans text-gray-700 bg-gray-50 p-4 rounded-lg overflow-x-auto h-[600px]">
+          {savedPlan.planText}
+        </pre>
+        <div className="h-[600px]">
+          <MapDisplay locations={savedPlan.locations} />
+        </div>
+      </div>
     </div>
   );
 };
