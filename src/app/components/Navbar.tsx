@@ -1,10 +1,10 @@
 'use client';
 
-import { useUser } from '@auth0/nextjs-auth0/client';
 import Link from 'next/link';
+import { useUser } from '@auth0/nextjs-auth0/client';
 
 export default function Navbar() {
-  const { user, error, isLoading } = useUser();
+  const { user, isLoading } = useUser();
 
   return (
     <nav className="bg-white shadow-md">
@@ -16,32 +16,26 @@ export default function Navbar() {
             </Link>
           </div>
           <div className="flex items-center">
-            <div className="ml-4 flex items-center md:ml-6">
-              {isLoading && (
-                <p className="text-gray-500">Lädt...</p>
-              )}
-              {!isLoading && !user && (
+            {isLoading ? null : user ? (
+              <>
+                <span className="mr-4 text-gray-700 font-semibold">
+                  {user.name || user.email}
+                </span>
                 <a
-                  href="/api/auth/login"
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                  href="/api/auth/logout"
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
                 >
-                  Anmelden
+                  Abmelden
                 </a>
-              )}
-              {user && (
-                <div className="ml-3 relative flex items-center">
-                  <p className="text-gray-700 mr-4">
-                    Hallo, {user.name}
-                  </p>
-                  <a
-                    href="/api/auth/logout"
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
-                  >
-                    Abmelden
-                  </a>
-                </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <a
+                href="/api/auth/login"
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Anmelden
+              </a>
+            )}
           </div>
         </div>
       </div>

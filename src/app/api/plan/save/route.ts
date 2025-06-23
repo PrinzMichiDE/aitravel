@@ -1,6 +1,21 @@
 import { getSession } from '@auth0/nextjs-auth0';
-import { adminDb } from '../../../../lib/firebase';
+import mongoose from 'mongoose';
 import { NextRequest } from 'next/server';
+
+const MONGODB_URI = process.env.MONGODB_URI!;
+
+const planSchema = new mongoose.Schema({
+  userEmail: { type: String, required: true, unique: true },
+  plan: { type: Object, required: true },
+});
+
+const Plan = mongoose.models.Plan || mongoose.model('Plan', planSchema);
+
+async function connectMongo() {
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(MONGODB_URI);
+  }
+}
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -13,14 +28,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    await connectMongo();
     const plan = await req.json();
-
-    // Verwende die E-Mail des Benutzers als eindeutige ID für das Dokument.
     const userEmail = session.user.email;
-    const planDocRef = adminDb.collection('plans').doc(userEmail);
-
-    await planDocRef.set(plan);
-
+    await Plan.findOneAndUpdate(
+      { userEmail },
+      { plan },
+      { upsert: true, new: true }
+    );
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

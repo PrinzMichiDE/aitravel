@@ -9,12 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@auth0/nextjs-auth0": "^4.7.0",
+    "@auth0/nextjs-auth0": "^3.7.0",
     "@google/generative-ai": "^0.24.1",
     "@types/leaflet": "^1.9.18",
-    "firebase": "^11.9.1",
-    "firebase-admin": "^13.4.0",
     "leaflet": "^1.9.4",
+    "mongoose": "^8.16.0",
     "next": "15.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { useUser } from '@auth0/nextjs-auth0/client';
 
 // Typdefinition für einen Ort
 export interface Location {
@@ -36,7 +35,6 @@ const NotLoggedIn = () => (
 );
 
 const TravelPlanner = () => {
-  const { user } = useUser();
   const [destination, setDestination] = useState('');
   const [duration, setDuration] = useState('');
   const [interests, setInterests] = useState('');
@@ -45,22 +43,6 @@ const TravelPlanner = () => {
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<TravelPlan | null>(null);
   const [isPlanSaved, setIsPlanSaved] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      setLoading(true);
-      fetch('/api/plan/load')
-        .then(res => res.json())
-        .then(data => {
-          if (data) {
-            setPlan(data);
-            setIsPlanSaved(true);
-          }
-        })
-        .catch(err => setError('Fehler beim Laden des gespeicherten Plans.'))
-        .finally(() => setLoading(false));
-    }
-  }, [user]);
 
   const handleGenerateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,10 +91,6 @@ const TravelPlanner = () => {
       setLoading(false);
     }
   };
-
-  if (!user) {
-    return <NotLoggedIn />;
-  }
 
   return (
     <div className="w-full max-w-7xl">
@@ -175,8 +153,6 @@ const TravelPlanner = () => {
 };
 
 export default function Home() {
-  const { user, isLoading } = useUser();
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-100">
       <div className="text-center mb-12">
@@ -185,10 +161,7 @@ export default function Home() {
           Erhalte personalisierte, dynamische und kontextbezogene Reisepläne, erstellt von unserer KI. Ein proaktiver, interaktiver Reisebegleiter, der sich in Echtzeit an deine Bedürfnisse anpasst.
         </p>
       </div>
-      
-      {isLoading && <p>Lade Sitzung...</p>}
-      {!isLoading && !user && <NotLoggedIn />}
-      {user && <TravelPlanner />}
+      <TravelPlanner />
     </main>
   );
 }

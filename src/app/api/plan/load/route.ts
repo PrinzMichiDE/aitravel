@@ -1,5 +1,20 @@
 import { getSession } from '@auth0/nextjs-auth0';
-import { adminDb } from '../../../../lib/firebase';
+import mongoose from 'mongoose';
+
+const MONGODB_URI = process.env.MONGODB_URI!;
+
+const planSchema = new mongoose.Schema({
+  userEmail: { type: String, required: true, unique: true },
+  plan: { type: Object, required: true },
+});
+
+const Plan = mongoose.models.Plan || mongoose.model('Plan', planSchema);
+
+async function connectMongo() {
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(MONGODB_URI);
+  }
+}
 
 export async function GET() {
   const session = await getSession();
@@ -12,12 +27,11 @@ export async function GET() {
   }
 
   try {
+    await connectMongo();
     const userEmail = session.user.email;
-    const planDocRef = adminDb.collection('plans').doc(userEmail);
-    const docSnap = await planDocRef.get();
-
-    if (docSnap.exists()) {
-      return new Response(JSON.stringify(docSnap.data()), {
+    const planDoc = await Plan.findOne({ userEmail });
+    if (planDoc) {
+      return new Response(JSON.stringify(planDoc.plan), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
