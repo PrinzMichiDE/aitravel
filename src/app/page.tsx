@@ -188,41 +188,53 @@ function splitPlanByDays(planText: string): { title: string, content: string }[]
   return result;
 }
 
+// Hilfsfunktion: Locations pro Tag zuordnen (einfache Heuristik: Name im Text)
+function locationsForDay(dayContent: string, locations: Location[]): Location[] {
+  const lower = dayContent.toLowerCase();
+  return locations.filter(loc => lower.includes(loc.name.toLowerCase()));
+}
+
 const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
   const days = splitPlanByDays(plan.planText);
-  // Optionale Zuordnung: Locations pro Tag (vereinfachte Heuristik)
-  // Hier: Alle Locations werden unter jedem Tag angezeigt (besser: NLP, aber für Demo reicht das)
   return (
-    <div className="flex flex-col gap-8 mt-8">
+    <div className="flex flex-col gap-12 mt-8">
       <AnimatePresence>
-        {days.map((day, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ duration: 0.5, delay: idx * 0.15 }}
-            className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 relative overflow-hidden"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg shadow-sm animate-bounce-slow">
-                {idx + 1}
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-blue-800 tracking-tight">{day.title}</h3>
-            </div>
-            <div className="prose max-w-none mb-4">
-              <ReactMarkdown>{day.content}</ReactMarkdown>
-            </div>
-            <div className="flex flex-wrap gap-4 mt-2">
-              {plan.locations.map((loc, lidx) => (
-                <div key={lidx} className="min-w-[220px] max-w-xs flex-1">
-                  <span className="font-semibold text-gray-700">{loc.name}</span>
-                  <LocationInfo name={loc.name} lat={loc.lat} lon={loc.lon} />
+        {days.map((day, idx) => {
+          const dayLocations = locationsForDay(day.content, plan.locations);
+          return (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ duration: 0.5, delay: idx * 0.12 }}
+              className="bg-white rounded-2xl shadow-lg p-8 border-l-8 border-blue-300 relative overflow-visible flex flex-col gap-4"
+            >
+              <div className="flex items-center gap-4 mb-2">
+                <div className="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-800 font-bold text-2xl shadow-md border-4 border-white absolute -left-16 top-4 z-10">
+                  {idx + 1}
                 </div>
-              ))}
-            </div>
-          </motion.div>
-        ))}
+                <h3 className="text-2xl md:text-3xl font-bold text-blue-900 tracking-tight ml-8">{day.title}</h3>
+              </div>
+              <div className="prose max-w-none mb-2 ml-8">
+                <ReactMarkdown>{day.content}</ReactMarkdown>
+              </div>
+              {dayLocations.length > 0 && (
+                <div className="ml-8">
+                  <div className="font-semibold text-gray-700 mb-2">Etappen & Highlights:</div>
+                  <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
+                    {dayLocations.map((loc, lidx) => (
+                      <div key={lidx} className="min-w-[260px] max-w-xs flex-shrink-0 bg-gray-50 border border-gray-200 rounded-xl p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <span className="font-semibold text-gray-800 mb-1 truncate text-lg">{loc.name}</span>
+                        <LocationInfo name={loc.name} lat={loc.lat} lon={loc.lon} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );
