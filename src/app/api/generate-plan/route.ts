@@ -28,29 +28,45 @@ export async function POST(req: Request) {
           );
     }
 
-    // 3. Gemini AI Client initialisieren
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-
     // 4. Prompt für die KI erstellen
     const prompt = `Erstelle einen detaillierten, tagesbasierten Reiseplan.
       Reiseziel: ${destination}
       Dauer: ${duration} Tage
       Interessen: ${interests}
       
-      Gib die Antwort als reinen Text aus, formatiert mit Markdown.
-      Jeder Tag sollte eine Überschrift (z.B. "Tag 1: Ankunft und Erkundung") haben.
-      Liste für jeden Tag konkrete Vorschläge für Aktivitäten, Sehenswürdigkeiten und Restaurants auf.
-      Gib auch geschätzte Zeiten oder Dauern an, wo es sinnvoll ist.
-      Sei kreativ und versuche, die Interessen bestmöglich zu berücksichtigen.`;
+      Gib die Antwort als valides JSON-Objekt aus. Das JSON-Objekt sollte die folgende Struktur haben:
+      {
+        "planText": "Ein detaillierter, mit Markdown formatierter Reiseplan als String. Jeder Tag sollte eine Überschrift haben (z.B. '# Tag 1: Ankunft').",
+        "locations": [
+          {
+            "name": "Name des Ortes oder der Sehenswürdigkeit",
+            "lat": 48.8584,
+            "lon": 2.2945
+          }
+        ]
+      }
+      
+      Extrahiere die Koordinaten (latitude und longitude) für jeden vorgeschlagenen Ort (Sehenswürdigkeit, Restaurant usw.) und füge sie in das 'locations'-Array ein.
+      Sei kreativ und versuche, die Interessen bestmöglich zu berücksichtigen. Der 'planText' sollte den gesamten Reiseplan enthalten, wie bisher.`;
 
-    // 5. KI-Modell aufrufen
+    // 5. KI-Modell aufrufen und JSON-Antwort anfordern
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-pro',
+      generationConfig: {
+        responseMimeType: "application/json",
+      }
+    });
+
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
     // 6. Antwort an den Client senden
-    return new Response(JSON.stringify({ plan: text }), {
+    // Der Text ist bereits ein JSON-String, also parsen wir ihn und senden ihn.
+    const parsedJson = JSON.parse(text);
+
+    return new Response(JSON.stringify(parsedJson), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -60,7 +76,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error(error);
     return new Response(
-      JSON.stringify({ error: 'Fehler bei der Kommunikation mit der Gemini-API.' }),
+      JSON.stringify({ error: 'Fehler bei der Kommunikation mit der Gemini-API oder beim Parsen der JSON-Antwort.' }),
       {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
