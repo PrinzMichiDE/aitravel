@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import ReactMarkdown from 'react-markdown';
 import LocationInfo from './components/LocationInfo';
 import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
 
 // Typdefinition für einen Ort
 export interface Location {
@@ -17,6 +18,8 @@ export interface Location {
 interface TravelPlan {
   planText: string;
   locations: Location[];
+  startDate?: string;
+  endDate?: string;
 }
 
 const MapDisplay = dynamic(() => import('./components/MapDisplay'), { 
@@ -41,6 +44,8 @@ const TravelPlanner = () => {
   const [destination, setDestination] = useState('');
   const [duration, setDuration] = useState('');
   const [interests, setInterests] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +65,7 @@ const TravelPlanner = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ destination, duration, interests }),
+        body: JSON.stringify({ destination, duration, interests, startDate, endDate }),
       });
 
       const data = await response.json();
@@ -103,6 +108,16 @@ const TravelPlanner = () => {
           <div className="mb-4">
             <label htmlFor="destination" className="block text-gray-700 text-sm font-bold mb-2">Reiseziel</label>
             <input id="destination" type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="z.B. Paris, Frankreich" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+          </div>
+          <div className="mb-4 flex gap-4">
+            <div className="flex-1">
+              <label htmlFor="startDate" className="block text-gray-700 text-sm font-bold mb-2">Reisebeginn</label>
+              <input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="endDate" className="block text-gray-700 text-sm font-bold mb-2">Reiseende</label>
+              <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
+            </div>
           </div>
           <div className="mb-4">
             <label htmlFor="duration" className="block text-gray-700 text-sm font-bold mb-2">Reisedauer (in Tagen)</label>
@@ -205,14 +220,58 @@ function googleMapsRouteLink(locations: Location[]): string | null {
   return url;
 }
 
+// Hilfskomponente: Wetter für einen Tag (lat, lon, date)
+const DayWeather: React.FC<{ lat: number; lon: number; date: string }> = ({ lat, lon, date }) => {
+  const [weather, setWeather] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchWeather() {
+      setLoading(true);
+      try {
+        // OpenWeatherMap unterstützt historische Prognosen nur mit Bezahl-API, daher nehmen wir aktuelle Daten
+        const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+        if (!res.ok) throw new Error('Fehler beim Laden der Wetterdaten');
+        const data = await res.json();
+        if (!cancelled) setWeather(data);
+      } catch {
+        if (!cancelled) setWeather(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchWeather();
+    return () => { cancelled = true; };
+  }, [lat, lon, date]);
+  if (loading) return <div className="w-12 h-12 flex items-center justify-center"><svg className="animate-spin h-6 w-6 text-blue-300" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg></div>;
+  if (!weather) return <div className="w-12 h-12 flex items-center justify-center text-gray-400">–</div>;
+  return (
+    <div className="w-12 h-12 flex flex-col items-center justify-center">
+      {weather.weather?.[0]?.icon && (
+        <img src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}.png`} alt="Wetter" className="w-8 h-8 mb-1" />
+      )}
+      <span className="text-xs font-semibold text-blue-700">{Math.round(weather.main.temp)}°C</span>
+    </div>
+  );
+};
+
 const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
   const days = splitPlanByDays(plan.planText);
+  // Hilfsfunktion: Datum für Tag N berechnen
+  function dateForDay(idx: number): string | undefined {
+    if (!plan.startDate) return undefined;
+    const d = new Date(plan.startDate);
+    d.setDate(d.getDate() + idx);
+    return d.toISOString().slice(0, 10);
+  }
   return (
     <div className="flex flex-col gap-12 mt-8">
       <AnimatePresence>
         {days.map((day, idx) => {
           const dayLocations = locationsForDay(day.content, plan.locations);
           const routeLink = googleMapsRouteLink(dayLocations);
+          const firstLoc = dayLocations[0];
+          const dayDate = dateForDay(idx);
           return (
             <motion.div
               key={idx}
@@ -226,6 +285,11 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                 <div className="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-800 font-bold text-2xl shadow-md border-4 border-white absolute -left-16 top-4 z-10">
                   {idx + 1}
                 </div>
+                {firstLoc && dayDate && (
+                  <div className="absolute -left-28 top-4 z-10">
+                    <DayWeather lat={firstLoc.lat} lon={firstLoc.lon} date={dayDate} />
+                  </div>
+                )}
                 <h3 className="text-2xl md:text-3xl font-bold text-blue-900 tracking-tight ml-8">{day.title}</h3>
               </div>
               <div className="prose max-w-none mb-2 ml-8">
