@@ -30,6 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }));
     res.status(200).json({ events });
   } catch (error) {
-    res.status(500).json({ error: 'Interner Serverfehler.' });
+    console.error(error);
+    res.status(500).json({ error: 'Interner Serverfehler.', details: error instanceof Error ? error.message : String(error) });
   }
 } 

@@ -20,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const images = data.results.map((img: any) => img.urls?.regular).filter(Boolean);
     res.status(200).json({ images });
   } catch (error) {
-    res.status(500).json({ error: 'Interner Serverfehler.' });
+    console.error(error);
+    res.status(500).json({ error: 'Interner Serverfehler.', details: error instanceof Error ? error.message : String(error) });
   }
 } 

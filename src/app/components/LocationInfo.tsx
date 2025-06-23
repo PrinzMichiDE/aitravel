@@ -77,6 +77,7 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [extraImages, setExtraImages] = useState<string[]>([]);
   const [unsplashImages, setUnsplashImages] = useState<string[]>([]);
+  const [pixabayImages, setPixabayImages] = useState<string[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
 
@@ -116,6 +117,10 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
         fetch(`/api/unsplash?q=${encodeURIComponent(name)}`)
           .then(res => res.ok ? res.json() : { images: [] })
           .then(data => setUnsplashImages(data.images || []));
+        // Pixabay-Bilder laden
+        fetch(`/api/pixabay?q=${encodeURIComponent(name)}`)
+          .then(res => res.ok ? res.json() : { images: [] })
+          .then(data => setPixabayImages(data.images || []));
         // Events laden
         fetch(`/api/events?q=${encodeURIComponent(name)}`)
           .then(res => res.ok ? res.json() : { events: [] })
@@ -138,7 +143,7 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
   }
 
   // Kombiniere alle Bilder (nur eine galleryImages-Variable!)
-  const galleryImages: string[] = [...getImagesFromWiki(wiki), ...extraImages, ...unsplashImages];
+  const galleryImages: string[] = [...getImagesFromWiki(wiki), ...extraImages, ...unsplashImages, ...pixabayImages];
 
   if (loading) return (
     <div className="flex items-center gap-2 text-gray-400 text-sm animate-pulse min-h-[120px]">
@@ -196,7 +201,7 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
       <div className="flex gap-2 mt-1 mb-1">
         <button onClick={() => { setIsFavorite(f => !f); localStorage.setItem(`fav_${name}`, (!isFavorite).toString()); }} aria-label="Favorit" className={`p-2 rounded-full shadow ${isFavorite ? 'bg-yellow-300' : 'bg-gray-200'} hover:bg-yellow-400 transition`} title="Als Favorit speichern">★</button>
         <button onClick={() => { navigator.clipboard.writeText(window.location.href + `#${encodeURIComponent(name)}`); }} aria-label="Teilen" className="p-2 rounded-full shadow bg-blue-200 hover:bg-blue-400 transition" title="Link teilen">🔗</button>
-        <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full shadow bg-green-200 hover:bg-green-400 transition" title="Auf Karte anzeigen">🗺️</a>
+        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full shadow bg-green-200 hover:bg-green-400 transition" title="Auf Karte anzeigen">🗺️</a>
       </div>
       <span className="font-bold text-base text-blue-900 text-center mb-1">{name}</span>
       {wiki.description && <span className="text-xs text-blue-700 mb-1 text-center">{wiki.description}</span>}
