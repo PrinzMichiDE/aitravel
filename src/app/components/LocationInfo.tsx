@@ -56,6 +56,19 @@ async function fetchCommonsImages(title: string): Promise<string[]> {
   }
 }
 
+// Event-Box-Komponente
+const EventBox: React.FC<{ event: any }> = ({ event }) => (
+  <div className="bg-white border border-blue-100 rounded-lg shadow p-3 flex flex-col md:flex-row gap-3 mb-3 max-w-xl">
+    {event.image && <img src={event.image} alt={event.name} className="w-24 h-24 object-cover rounded-lg" />}
+    <div className="flex-1">
+      <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 font-bold text-lg hover:underline">{event.name}</a>
+      <div className="text-xs text-gray-500 mb-1">{event.venue} | {event.start && new Date(event.start).toLocaleString('de-DE')}</div>
+      <div className="text-sm text-gray-700 mb-1 line-clamp-3">{event.description?.slice(0, 180)}{event.description?.length > 180 ? '...' : ''}</div>
+      <a href={event.url} target="_blank" rel="noopener noreferrer" className="inline-block mt-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold">Zum Event</a>
+    </div>
+  </div>
+);
+
 const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
   const [wiki, setWiki] = useState<WikiData | 'notfound'>('notfound');
   const [loading, setLoading] = useState(true);
@@ -63,7 +76,9 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [extraImages, setExtraImages] = useState<string[]>([]);
+  const [unsplashImages, setUnsplashImages] = useState<string[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +113,14 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
         }
         // Hole zusätzliche Commons-Bilder
         fetchCommonsImages(name).then(imgs => setExtraImages(imgs));
+        // Unsplash-Bilder laden
+        fetch(`/api/unsplash?q=${encodeURIComponent(name)}`)
+          .then(res => res.ok ? res.json() : { images: [] })
+          .then(data => setUnsplashImages(data.images || []));
+        // Events laden
+        fetch(`/api/events?q=${encodeURIComponent(name)}`)
+          .then(res => res.ok ? res.json() : { events: [] })
+          .then(data => setEvents(data.events || []));
       } catch (err: any) {
         if (!cancelled) setError('Daten konnten nicht geladen werden.');
       }
@@ -116,7 +139,7 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
   }
 
   // Kombiniere alle Bilder (nur eine galleryImages-Variable!)
-  const galleryImages: string[] = [...getImagesFromWiki(wiki), ...extraImages];
+  const galleryImages: string[] = [...getImagesFromWiki(wiki), ...extraImages, ...unsplashImages];
 
   if (loading) return (
     <div className="flex items-center gap-2 text-gray-400 text-sm animate-pulse min-h-[120px]">
@@ -200,6 +223,13 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
           <a href={wiki.tickets} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded shadow text-xs font-semibold transition-colors">Tickets kaufen</a>
         )}
       </div>
+      {/* Events */}
+      {events.length > 0 && (
+        <div className="w-full mt-4">
+          <div className="font-semibold text-blue-700 mb-2">Events & Veranstaltungen:</div>
+          {events.map(ev => <EventBox key={ev.id} event={ev} />)}
+        </div>
+      )}
     </div>
   );
 };
