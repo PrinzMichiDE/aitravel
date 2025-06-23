@@ -194,6 +194,17 @@ function locationsForDay(dayContent: string, locations: Location[]): Location[] 
   return locations.filter(loc => lower.includes(loc.name.toLowerCase()));
 }
 
+// Hilfsfunktion: Google Maps Directions-Link für Tages-Locations
+function googleMapsRouteLink(locations: Location[]): string | null {
+  if (locations.length < 2) return null;
+  const origin = `${locations[0].lat},${locations[0].lon}`;
+  const destination = `${locations[locations.length - 1].lat},${locations[locations.length - 1].lon}`;
+  const waypoints = locations.slice(1, -1).map(l => `${l.lat},${l.lon}`).join('|');
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+  if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+  return url;
+}
+
 const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
   const days = splitPlanByDays(plan.planText);
   return (
@@ -201,6 +212,7 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
       <AnimatePresence>
         {days.map((day, idx) => {
           const dayLocations = locationsForDay(day.content, plan.locations);
+          const routeLink = googleMapsRouteLink(dayLocations);
           return (
             <motion.div
               key={idx}
@@ -219,6 +231,18 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
               <div className="prose max-w-none mb-2 ml-8">
                 <ReactMarkdown>{day.content}</ReactMarkdown>
               </div>
+              {routeLink && (
+                <div className="ml-8 mb-2">
+                  <a
+                    href={routeLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition-colors duration-150 mb-2"
+                  >
+                    Route auf Google Maps anzeigen
+                  </a>
+                </div>
+              )}
               {dayLocations.length > 0 && (
                 <div className="ml-8">
                   <div className="font-semibold text-gray-700 mb-2">Etappen & Highlights:</div>
