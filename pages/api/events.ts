@@ -39,20 +39,71 @@ async function fetchEventbriteEvents(params: any): Promise<Event[]> {
   }));
 }
 
-// Meetup Provider (Platzhalter)
-async function fetchMeetupEvents(params: any): Promise<Event[]> {
-  // TODO: API-Key und echte Implementierung
-  // const apiKey = process.env.MEETUP_API_KEY;
-  // ...
-  return [];
+// Hilfsfunktion: Geocoding (Adresse zu lat/lon)
+async function geocodeAddress(address: string): Promise<{ lat: number, lon: number } | null> {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'aitravel/1.0' } });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data[0]) return null;
+  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
 }
 
-// Ticketmaster Provider (Platzhalter)
+// Meetup Provider
+async function fetchMeetupEvents(params: any): Promise<Event[]> {
+  const apiKey = process.env.MEETUP_API_KEY;
+  if (!apiKey) return [];
+  const { q, origin, radius } = params;
+  const address = origin && typeof origin === 'string' && origin.trim() !== '' ? origin : `Hauptbahnhof ${q}`;
+  const geo = await geocodeAddress(address);
+  if (!geo) return [];
+  // Meetup erwartet Radius in Meilen
+  const radiusMiles = radius && typeof radius === 'string' && radius.trim() !== '' ? (parseFloat(radius) * 0.621371).toFixed(1) : '18.6'; // 30km ≈ 18.6mi
+  const url = `https://api.meetup.com/find/upcoming_events?key=${apiKey}&sign=true&lon=${geo.lon}&lat=${geo.lat}&radius=${radiusMiles}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.events || []).map((ev: any) => ({
+    id: 'mu-' + ev.id,
+    provider: 'meetup',
+    name: ev.name,
+    url: ev.link,
+    start: ev.local_date + 'T' + ev.local_time,
+    end: '',
+    image: ev.featured_photo?.photo_link,
+    description: ev.description,
+    venue: ev.venue?.name || ev.group?.name
+  }));
+}
+
+// Ticketmaster Provider
 async function fetchTicketmasterEvents(params: any): Promise<Event[]> {
-  // TODO: API-Key und echte Implementierung
-  // const apiKey = process.env.TICKETMASTER_API_KEY;
-  // ...
-  return [];
+  const apiKey = process.env.TICKETMASTER_API_KEY;
+  if (!apiKey) return [];
+  const { q, origin, radius } = params;
+  // Stadtname aus origin extrahieren (einfach: alles nach letztem Komma, sonst q)
+  let city = q;
+  if (origin && typeof origin === 'string' && origin.includes(',')) {
+    const parts = origin.split(',');
+    city = parts[parts.length - 1].trim();
+  }
+  const within = radius && typeof radius === 'string' && radius.trim() !== '' ? radius : '30';
+  const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${apiKey}&city=${encodeURIComponent(city)}&radius=${within}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  const events = (data._embedded?.events || []).map((ev: any) => ({
+    id: 'tm-' + ev.id,
+    provider: 'ticketmaster',
+    name: ev.name,
+    url: ev.url,
+    start: ev.dates?.start?.dateTime || '',
+    end: '',
+    image: ev.images?.[0]?.url,
+    description: ev.info || ev.description,
+    venue: ev._embedded?.venues?.[0]?.name
+  }));
+  return events;
 }
 
 // Eventim Provider (Scraping, Platzhalter)
