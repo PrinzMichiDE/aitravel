@@ -152,6 +152,47 @@ const TravelPlanner = () => {
   );
 };
 
+const SavedPlan: React.FC = () => {
+  const [savedPlan, setSavedPlan] = useState<TravelPlan | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSavedPlan = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/plan/load');
+        if (!res.ok) {
+          throw new Error('Kein gespeicherter Plan gefunden oder nicht eingeloggt.');
+        }
+        const data = await res.json();
+        setSavedPlan(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSavedPlan();
+  }, []);
+
+  if (loading) return <div className="mt-8">Gespeicherter Plan wird geladen...</div>;
+  if (error) return <div className="mt-8 text-red-600">{error}</div>;
+  if (!savedPlan) return <div className="mt-8 text-gray-500">Kein gespeicherter Plan vorhanden.</div>;
+
+  return (
+    <div className="mt-8 bg-white p-8 rounded-lg shadow-md">
+      <h3 className="text-2xl font-bold text-gray-800 mb-4">Dein gespeicherter Reiseplan</h3>
+      <pre className="whitespace-pre-wrap font-sans text-gray-700 bg-gray-50 p-4 rounded-lg overflow-x-auto">
+        {savedPlan.planText}
+      </pre>
+      {/* Optional: MapDisplay für gespeicherte Orte */}
+      {/* <MapDisplay locations={savedPlan.locations} /> */}
+    </div>
+  );
+};
+
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-100">
@@ -162,6 +203,7 @@ export default function Home() {
         </p>
       </div>
       <TravelPlanner />
+      <SavedPlan />
     </main>
   );
 }
