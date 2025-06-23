@@ -27,14 +27,20 @@ const MapBoundsUpdater = ({ locations }: { locations: Location[] }) => {
     return null;
   };
 
-// Typdefinition für die Props der Komponente
-interface MapDisplayProps {
-    locations: Location[];
+interface MapMarker {
+  name: string;
+  lat: number;
+  lon: number;
+  type: 'poi' | 'event' | 'restaurant';
 }
 
-const MapDisplay: React.FC<MapDisplayProps> = ({ locations }) => {
-  const position: [number, number] = [51.505, -0.09]; // Standard-Position (London), falls keine Orte vorhanden
+interface MapDisplayProps {
+  locations: MapMarker[];
+  iconForType?: (type: string) => React.ReactNode;
+}
 
+const MapDisplay: React.FC<MapDisplayProps> = ({ locations, iconForType }) => {
+  const position: [number, number] = [51.505, -0.09];
   return (
     <MapContainer center={position} zoom={locations && locations.length > 0 ? 13 : 5} scrollWheelZoom={true} style={{ height: '100%', width: '100%', borderRadius: '8px' }}>
       <TileLayer
@@ -42,9 +48,12 @@ const MapDisplay: React.FC<MapDisplayProps> = ({ locations }) => {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {locations && locations.map((loc, index) => (
-        <Marker key={index} position={[loc.lat, loc.lon]}>
+        <Marker key={index} position={[loc.lat, loc.lon]} icon={undefined}>
           <Popup>
-            {loc.name}
+            <div className="flex items-center gap-2">
+              {iconForType ? iconForType(loc.type) : null}
+              <span>{loc.name}</span>
+            </div>
           </Popup>
         </Marker>
       ))}

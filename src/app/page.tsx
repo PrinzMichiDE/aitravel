@@ -6,6 +6,8 @@ import ReactMarkdown from 'react-markdown';
 import LocationInfo from './components/LocationInfo';
 import { motion, AnimatePresence } from 'framer-motion';
 import React from 'react';
+import MapDisplay from './components/MapDisplay';
+import { FaMapMarkerAlt, FaUtensils, FaCalendarAlt } from 'react-icons/fa';
 
 // Typdefinition für einen Ort
 export interface Location {
@@ -23,7 +25,7 @@ interface TravelPlan {
   destination?: string;
 }
 
-const MapDisplay = dynamic(() => import('./components/MapDisplay'), { 
+const MapDisplayComponent = dynamic(() => import('./components/MapDisplay'), { 
   ssr: false,
   loading: () => <div style={{height: '400px', width: '100%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center'}}><p>Karte wird geladen...</p></div>
 });
@@ -49,8 +51,6 @@ const TravelPlanner = () => {
   const [origin, setOrigin] = useState('');
   const [accommodation, setAccommodation] = useState('');
   const [radius, setRadius] = useState('');
-  const [eventStart, setEventStart] = useState('');
-  const [eventEnd, setEventEnd] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +78,7 @@ const TravelPlanner = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ destination, duration, interests, startDate, endDate, origin, accommodation, radius, eventStart, eventEnd }),
+        body: JSON.stringify({ destination, duration, interests, startDate, endDate, origin, accommodation, radius }),
       });
 
       const data = await response.json();
@@ -145,16 +145,6 @@ const TravelPlanner = () => {
             <div className="flex-1">
               <label htmlFor="endDate" className="block text-gray-700 text-sm font-bold mb-2">Reiseende</label>
               <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
-            </div>
-          </div>
-          <div className="mb-4 flex gap-4">
-            <div className="flex-1">
-              <label htmlFor="eventStart" className="block text-gray-700 text-sm font-bold mb-2">Event-Beginn (von, optional)</label>
-              <input id="eventStart" type="date" value={eventStart} onChange={(e) => setEventStart(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-            </div>
-            <div className="flex-1">
-              <label htmlFor="eventEnd" className="block text-gray-700 text-sm font-bold mb-2">Event-Ende (bis, optional)</label>
-              <input id="eventEnd" type="date" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
             </div>
           </div>
           <div className="mb-6">
@@ -341,9 +331,43 @@ const LocationWeatherMini: React.FC<{ location: Location }> = ({ location }) => 
   );
 };
 
+const DUMMY_RESTAURANTS = [
+  { name: 'Restaurant A', lat: 0, lon: 0 },
+  { name: 'Restaurant B', lat: 0, lon: 0 },
+];
+
+// Hilfsfunktion: Events für einen Tag laden
+function useDayEvents(destination: string, origin: string, radius: string, start: string, end: string) {
+  const [events, setEvents] = React.useState<any[]>([]);
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchEvents() {
+      setEvents([]);
+      try {
+        const params = new URLSearchParams({
+          q: destination,
+          origin,
+          radius,
+          start,
+          end,
+          provider: 'all',
+        });
+        const res = await fetch(`/api/events?${params.toString()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setEvents(data.events || []);
+      } catch {
+        if (!cancelled) setEvents([]);
+      }
+    }
+    if (destination && start && end) fetchEvents();
+    return () => { cancelled = true; };
+  }, [destination, origin, radius, start, end]);
+  return events;
+}
+
 const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
   const days = splitPlanByDays(plan.planText);
-  // Hilfsfunktion: Datum für Tag N berechnen
   function dateForDay(idx: number): string | undefined {
     if (!plan.startDate) return undefined;
     const d = new Date(plan.startDate);
@@ -358,6 +382,22 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
           const routeLink = googleMapsRouteLink(dayLocations);
           const firstLoc = dayLocations[0];
           const dayDate = dateForDay(idx);
+          // Events für diesen Tag laden
+          const events = useDayEvents(
+            plan.destination || 'Berlin',
+            '', // origin ggf. aus Plan ergänzen
+            '', // radius ggf. aus Plan ergänzen
+            dayDate ? `${dayDate}T00:00:00Z` : '',
+            dayDate ? `${dayDate}T23:59:59Z` : ''
+          );
+          // Dummy-Restaurants (später ersetzen)
+          const restaurants = DUMMY_RESTAURANTS.map((r, i) => ({ ...r, lat: dayLocations[i % dayLocations.length]?.lat || 0, lon: dayLocations[i % dayLocations.length]?.lon || 0 }));
+          // Marker für Map: POIs, Events, Restaurants
+          const mapMarkers = [
+            ...dayLocations.map(l => ({ ...l, type: 'poi' })),
+            ...events.map(e => ({ name: e.name, lat: e.venue_lat || 0, lon: e.venue_lon || 0, type: 'event' })),
+            ...restaurants.map(r => ({ ...r, type: 'restaurant' })),
+          ];
           return (
             <motion.div
               key={idx}
@@ -378,6 +418,48 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                 )}
                 <h3 className="text-2xl md:text-3xl font-bold text-blue-900 tracking-tight ml-8">{day.title}</h3>
               </div>
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="w-full md:w-1/2 h-72">
+                  <MapDisplay
+                    locations={mapMarkers}
+                    iconForType={(type) => {
+                      if (type === 'event') return <FaCalendarAlt color="red" size={28} />;
+                      if (type === 'restaurant') return <FaUtensils color="green" size={28} />;
+                      return <FaMapMarkerAlt color="blue" size={28} />;
+                    }}
+                  />
+                </div>
+                <div className="w-full md:w-1/2 flex flex-col gap-4">
+                  <div>
+                    <span className="font-semibold text-blue-700 flex items-center gap-2"><FaCalendarAlt color="red" /> Events</span>
+                    {events.length === 0 ? <div className="text-gray-400 text-sm">Keine Events gefunden.</div> : events.map(ev => (
+                      <div key={ev.id} className="flex items-center gap-2 mt-2">
+                        <FaCalendarAlt color="red" />
+                        <a href={ev.url} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline font-semibold">{ev.name}</a>
+                        <span className="text-xs text-gray-500">{ev.start && new Date(ev.start).toLocaleString('de-DE')}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-green-700 flex items-center gap-2"><FaUtensils color="green" /> Restaurants</span>
+                    {restaurants.length === 0 ? <div className="text-gray-400 text-sm">Keine Restaurants gefunden.</div> : restaurants.map((r, i) => (
+                      <div key={i} className="flex items-center gap-2 mt-2">
+                        <FaUtensils color="green" />
+                        <span className="font-semibold">{r.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-blue-900 flex items-center gap-2"><FaMapMarkerAlt color="blue" /> POIs</span>
+                    {dayLocations.length === 0 ? <div className="text-gray-400 text-sm">Keine POIs gefunden.</div> : dayLocations.map((l, i) => (
+                      <div key={i} className="flex items-center gap-2 mt-2">
+                        <FaMapMarkerAlt color="blue" />
+                        <span className="font-semibold">{l.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <div className="prose max-w-none mb-2 ml-8">
                 <ReactMarkdown>{day.content}</ReactMarkdown>
               </div>
@@ -385,8 +467,8 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                 <div className="ml-8 mb-2">
                   <a
                     href={routeLink}
-          target="_blank"
-          rel="noopener noreferrer"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition-colors duration-150 mb-2"
                   >
                     Route auf Google Maps anzeigen
