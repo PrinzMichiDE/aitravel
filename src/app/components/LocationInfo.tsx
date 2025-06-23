@@ -90,10 +90,9 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
         if (typeof cache[cacheKey]?.wiki !== 'undefined') {
           setWiki(cache[cacheKey].wiki!);
           setLoading(false);
-          const imgs = getImagesFromWiki(cache[cacheKey].wiki!);
           return;
         }
-        const wikiRes = await fetch(`/api/wiki?title=${encodeURIComponent(name)}`);
+        const wikiRes = await fetch(`/api/wiki?title=${encodeURIComponent(name + ', ' + name)}`);
         let wikiData: WikiData | 'notfound' = 'notfound';
         if (wikiRes.status === 404) {
           wikiData = 'notfound';
