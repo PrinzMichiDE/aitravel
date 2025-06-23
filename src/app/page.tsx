@@ -42,7 +42,6 @@ const NotLoggedIn = () => (
 
 const TravelPlanner = () => {
   const [destination, setDestination] = useState('');
-  const [duration, setDuration] = useState('');
   const [interests, setInterests] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -58,6 +57,14 @@ const TravelPlanner = () => {
     setError(null);
     setPlan(null);
     setIsPlanSaved(false);
+
+    // Dauer berechnen
+    let duration = 1;
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      duration = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    }
 
     try {
       const response = await fetch('/api/generate-plan', {
@@ -118,10 +125,6 @@ const TravelPlanner = () => {
               <label htmlFor="endDate" className="block text-gray-700 text-sm font-bold mb-2">Reiseende</label>
               <input id="endDate" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
             </div>
-          </div>
-          <div className="mb-4">
-            <label htmlFor="duration" className="block text-gray-700 text-sm font-bold mb-2">Reisedauer (in Tagen)</label>
-            <input id="duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="z.B. 7" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required />
           </div>
           <div className="mb-6">
             <label htmlFor="interests" className="block text-gray-700 text-sm font-bold mb-2">Interessen & Vorlieben</label>
@@ -255,6 +258,58 @@ const DayWeather: React.FC<{ lat: number; lon: number; date: string }> = ({ lat,
   );
 };
 
+// Komponente: Kompakte Wetterübersicht für mehrere Locations
+const LocationsWeatherBar: React.FC<{ locations: Location[] }> = ({ locations }) => {
+  return (
+    <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar mt-2 mb-4">
+      {locations.map((loc, idx) => (
+        <LocationWeatherMini key={idx} location={loc} />
+      ))}
+    </div>
+  );
+};
+
+// Komponente: Kompaktes Wetter für eine einzelne Location
+const LocationWeatherMini: React.FC<{ location: Location }> = ({ location }) => {
+  const [weather, setWeather] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchWeather() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/weather?lat=${location.lat}&lon=${location.lon}`);
+        if (!res.ok) throw new Error('Fehler beim Laden der Wetterdaten');
+        const data = await res.json();
+        if (!cancelled) setWeather(data);
+      } catch {
+        if (!cancelled) setWeather(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchWeather();
+    return () => { cancelled = true; };
+  }, [location.lat, location.lon]);
+  return (
+    <div className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 min-w-[90px] max-w-[120px]">
+      <span className="text-xs font-semibold text-blue-900 truncate mb-1" title={location.name}>{location.name.length > 16 ? location.name.slice(0, 14) + '…' : location.name}</span>
+      {loading ? (
+        <svg className="animate-spin h-5 w-5 text-blue-300" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
+      ) : weather ? (
+        <>
+          {weather.weather?.[0]?.icon && (
+            <img src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}.png`} alt="Wetter" className="w-6 h-6 mb-1" />
+          )}
+          <span className="text-xs text-blue-700 font-semibold">{Math.round(weather.main.temp)}°C</span>
+        </>
+      ) : (
+        <span className="text-gray-400 text-xs">–</span>
+      )}
+    </div>
+  );
+};
+
 const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
   const days = splitPlanByDays(plan.planText);
   // Hilfsfunktion: Datum für Tag N berechnen
@@ -328,6 +383,12 @@ const RoadtripView: React.FC<{ plan: TravelPlan }> = ({ plan }) => {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+              {dayLocations.length > 0 && (
+                <div className="ml-8">
+                  <div className="font-semibold text-blue-700 mb-1">Wetterübersicht:</div>
+                  <LocationsWeatherBar locations={dayLocations} />
                 </div>
               )}
             </motion.div>
