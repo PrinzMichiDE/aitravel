@@ -4,6 +4,7 @@ interface LocationInfoProps {
   name: string;
   lat: number;
   lon: number;
+  destination: string;
 }
 
 interface WikiData {
@@ -69,7 +70,7 @@ const EventBox: React.FC<{ event: any }> = ({ event }) => (
   </div>
 );
 
-const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
+const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon, destination }) => {
   const [wiki, setWiki] = useState<WikiData | 'notfound'>('notfound');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +94,7 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
           setLoading(false);
           return;
         }
-        const wikiRes = await fetch(`/api/wiki?title=${encodeURIComponent(name + ', ' + name)}`);
+        const wikiRes = await fetch(`/api/wiki?title=${encodeURIComponent(name)}`);
         let wikiData: WikiData | 'notfound' = 'notfound';
         if (wikiRes.status === 404) {
           wikiData = 'notfound';
@@ -121,8 +122,8 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
         fetch(`/api/pixabay?q=${encodeURIComponent(name)}`)
           .then(res => res.ok ? res.json() : { images: [] })
           .then(data => setPixabayImages(data.images || []));
-        // Events laden
-        fetch(`/api/events?q=${encodeURIComponent(name)}`)
+        // Events laden (Reiseziel statt Location-Name)
+        fetch(`/api/events?q=${encodeURIComponent(destination)}`)
           .then(res => res.ok ? res.json() : { events: [] })
           .then(data => setEvents(data.events || []));
       } catch (err: any) {
@@ -132,7 +133,7 @@ const LocationInfo: React.FC<LocationInfoProps> = ({ name, lat, lon }) => {
     }
     fetchData();
     return () => { cancelled = true; };
-  }, [name, lat, lon]);
+  }, [destination]);
 
   function getImagesFromWiki(wiki: WikiData | 'notfound'): string[] {
     if (!wiki || wiki === 'notfound') return [];
